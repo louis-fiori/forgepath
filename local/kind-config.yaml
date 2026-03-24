@@ -1,0 +1,23 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: forgepath
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30007
+        hostPort: 7007
+        protocol: TCP
+      - containerPort: 30030
+        hostPort: 3000
+        protocol: TCP
+      - containerPort: 30808
+        hostPort: 8080
+        protocol: TCP
+      # Generic "demo service" slot, bound to whichever workload sets spec.type=NodePort, nodePort=30080 in deploy-service-to-kind.
+      - containerPort: 30080
+        hostPort: 8888
+        protocol: TCP
+      # incident-generator's on-demand failure endpoints (NodePort 30081). Reachable at http://localhost:8889, see scripts/trigger-incident.sh.
+      - containerPort: 30081
+        hostPort: 8889
+        protocol: TCP
