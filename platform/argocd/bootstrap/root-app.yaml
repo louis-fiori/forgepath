@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}.git
+    targetRevision: ${FORGEPATH_TARGET_BRANCH}
+    path: gitops/apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      # selfHeal stays off for platform components on purpose: it lets an operator
+      # debug in-place (kubectl edit/scale) before ArgoCD reconciles. Documented in
+      # docs/architecture.md. (previews use selfHeal: true — Git is source of truth.)
+      selfHeal: false
