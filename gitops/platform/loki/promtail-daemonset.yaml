@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: loki
+  labels:
+    app: promtail
+    backstage.io/kubernetes-id: loki
+spec:
+  selector:
+    matchLabels:
+      app: promtail
+  template:
+    metadata:
+      labels:
+        app: promtail
+        backstage.io/kubernetes-id: loki
+    spec:
+      serviceAccountName: promtail
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: promtail
+          image: grafana/promtail:3.5.0
+          args:
+            - -config.file=/etc/promtail/promtail-config.yaml
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: http
+              containerPort: 9080
+          securityContext:
+            # runAsUser: 0 is kept deliberately. Promtail tails the node's
+            # container logs via the hostPath mounts below (/var/log,
+            # /var/lib/docker/containers); those files are root-owned and not
+            # world-readable, so a non-root UID can't read them without extra
+            # node-level group plumbing (untested here). Running as uid 0 reads
+            # them by *ownership*, not capability — so dropping ALL capabilities
+            # below is still safe and removes the actual privilege surface.
+            # To move off root: verify node log readability for a chosen UID/GID
+            # first, then set runAsUser/runAsNonRoot accordingly.
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+            - name: run
+              mountPath: /run/promtail
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: promtail-config
+        - name: run
+          emptyDir: {}
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: containers
+          hostPath:
+            path: /var/lib/docker/containers

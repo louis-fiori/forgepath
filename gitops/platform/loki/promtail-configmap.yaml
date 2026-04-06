@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: loki
+data:
+  promtail-config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: info
+
+    positions:
+      # Persisted between promtail restarts so it doesn't replay all logs on
+      # crash. emptyDir is fine, losing positions just means a one-time
+      # re-ingestion on pod restart.
+      filename: /run/promtail/positions.yaml
+
+    clients:
+      - url: http://loki.loki.svc.cluster.local:3100/loki/api/v1/push
+
+    scrape_configs:
+      # Single scrape job that picks up every container log on the node
+      # (kubelet writes them to /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log).
+      # The Kubernetes SD enriches each log line with namespace/pod/container
+      # labels, which is what makes the "filter by namespace" query in
+      # Grafana feel snappy.
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        pipeline_stages:
+          # Container runtime in kind is containerd, its log lines are
+          # CRI-format (`<timestamp> <stream> <flags> <log>`). Extract the
+          # payload so the Logs panel shows clean log text, not the prefix.
+          - cri: {}
+        relabel_configs:
+          # Drop logs from pods not on this node (DaemonSet, so each pod
+          # only handles its own node's logs, avoids duplicate ingestion).
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: __host__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          # Build the log file path promtail tails. Matches kubelet's
+          # on-disk layout exactly.
+          - source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+            separator: /
+            replacement: /var/log/pods/*$1/*.log
