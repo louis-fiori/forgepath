@@ -1,0 +1,89 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Log volume per pod",
+      "type": "timeseries",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "sum by (namespace, pod) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"}[1m]))",
+        "legendFormat": "{{namespace}}/{{pod}}",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs",
+          "custom": {"fillOpacity": 10, "lineWidth": 1}
+        }
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max"]}},
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 0}
+    },
+    {
+      "title": "Service logs",
+      "type": "logs",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "{namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$search\"",
+        "refId": "A"
+      }],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "gridPos": {"h": 20, "w": 24, "x": 0, "y": 7}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["forgepath", "logs"],
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "namespace", "refId": "ns", "stream": "", "type": 1},
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "pod", "refId": "pod", "stream": "{namespace=~\"$namespace\"}", "type": 1},
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "search",
+        "label": "Search (regex)",
+        "type": "textbox",
+        "current": {"selected": false, "text": "", "value": ""}
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timezone": "browser",
+  "title": "Service logs",
+  "uid": "service-logs",
+  "version": 1
+}

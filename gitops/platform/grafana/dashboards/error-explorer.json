@@ -1,0 +1,246 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "title": "Matching log lines",
+      "type": "stat",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "sum(count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [$__range]))",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 100}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0}
+    },
+    {
+      "title": "Affected pods",
+      "type": "stat",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "count(sum by (pod) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [$__range])))",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0}
+    },
+    {
+      "title": "Affected namespaces",
+      "type": "stat",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "count(sum by (namespace) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [$__range])))",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "blue", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0}
+    },
+    {
+      "title": "Rate (lines/sec, all matches)",
+      "type": "stat",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "sum(rate({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [5m]))",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs",
+          "decimals": 2,
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "orange", "value": 0.1},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0}
+    },
+    {
+      "title": "Error rate over time (by pod)",
+      "type": "timeseries",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "sum by (namespace, pod) (rate({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [1m]))",
+        "legendFormat": "{{namespace}}/{{pod}}",
+        "refId": "A"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs",
+          "custom": {"fillOpacity": 20, "lineWidth": 1, "drawStyle": "bars", "stacking": {"mode": "normal"}}
+        }
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "right", "calcs": ["mean", "max", "sum"]}},
+      "gridPos": {"h": 9, "w": 16, "x": 0, "y": 5}
+    },
+    {
+      "title": "Top 10 noisiest pods",
+      "type": "bargauge",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "topk(10, sum by (namespace, pod) (count_over_time({namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\" [$__range])))",
+        "legendFormat": "{{namespace}}/{{pod}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {"mode": "continuous-RdYlGr"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        }
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 5}
+    },
+    {
+      "title": "Matching log lines",
+      "type": "logs",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{
+        "expr": "{namespace=~\"$namespace\", pod=~\"$pod\"} |~ \"(?i)$pattern\"",
+        "refId": "A"
+      }],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "gridPos": {"h": 18, "w": 24, "x": 0, "y": 14}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["forgepath", "logs", "errors"],
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "namespace", "refId": "ns", "stream": "", "type": 1},
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "pod", "refId": "pod", "stream": "{namespace=~\"$namespace\"}", "type": 1},
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {"selected": false, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "pattern",
+        "label": "Severity regex",
+        "description": "Case-insensitive regex used by every panel on this dashboard. Default catches the common error/exception/fatal/panic markers across most log formats.",
+        "type": "custom",
+        "query": "error|exception|fatal|panic,error|exception|fatal|panic|critical|severe,error|exception|fatal|panic|warn|warning,err\\b|fail",
+        "current": {"selected": true, "text": "error|exception|fatal|panic", "value": "error|exception|fatal|panic"},
+        "options": [
+          {"selected": true, "text": "error|exception|fatal|panic", "value": "error|exception|fatal|panic"},
+          {"selected": false, "text": "error|exception|fatal|panic|critical|severe", "value": "error|exception|fatal|panic|critical|severe"},
+          {"selected": false, "text": "error|exception|fatal|panic|warn|warning", "value": "error|exception|fatal|panic|warn|warning"},
+          {"selected": false, "text": "err\\b|fail", "value": "err\\b|fail"}
+        ]
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "Logs · Error explorer",
+  "uid": "error-explorer",
+  "version": 1
+}

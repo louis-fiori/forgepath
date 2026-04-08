@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: grafana
+  labels:
+    app: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: http://prometheus.prometheus.svc.cluster.local:9090
+        isDefault: true
+        editable: true
+      # Loki collects container logs for every pod in the cluster via the
+      # Promtail DaemonSet (see gitops/platform/loki/). The "Service logs"
+      # dashboard ships with it; ad-hoc queries are available under Explore.
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki.loki.svc.cluster.local:3100
+        isDefault: false
+        editable: true
