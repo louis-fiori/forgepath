@@ -1,0 +1,8 @@
+{
+  "_comment": "Dependencies merged into local/backstage/packages/backend/package.json by scripts/backstage-init.sh. The custom scaffolder action modules (src/modules/scaffolderAction*.ts) import these directly; declaring them keeps the build's @backstage/no-undeclared-imports lint rule happy. @backstage/* versions track the create-app line pinned in .env.example; @octokit/rest backs the github:addLabels / github:closePullRequest actions.",
+  "dependencies": {
+    "@backstage/backend-plugin-api": "^1.9.0",
+    "@backstage/plugin-scaffolder-node": "^0.13.2",
+    "@octokit/rest": "^21.0.0"
+  }
+}

@@ -1,0 +1,44 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: incident-analyzer
+  description: |
+    The AI Incident Analyzer for ForgePath. A Python/FastAPI service that polls Loki + the Kubernetes API + Prometheus, detects incidents, asks Claude
+    (claude-sonnet-4-6) for a structured diagnosis citing the affected service's runbook, and surfaces it as a GitHub issue and a Backstage notification.
+    Consumes what the incident-generator produces.
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-label-selector: app=incident-analyzer
+    pagerduty.com/integration-key: ''
+  tags:
+    - ai
+    - aiops
+    - observability
+    - incident-response
+  links:
+    - url: http://localhost:3000/d/error-explorer?var-namespace=incident-generator
+      title: Grafana errors (source it watches)
+      icon: dashboard
+    - url: http://localhost:3000/d/cluster-pods?var-namespace=incident-analyzer
+      title: Grafana pod metrics (analyzer)
+      icon: dashboard
+    - url: http://localhost:8080/applications/incident-analyzer
+      title: ArgoCD application
+      icon: scaffolder
+    - url: http://localhost:7007/create/templates/default/analyze-incident?formData=%7B%22namespace%22%3A%22incident-generator%22%7D
+      title: Analyze an incident now
+      icon: scaffolder
+    - url: http://localhost:7007/create/templates/default/analyze-log?formData=%7B%22namespace%22%3A%22incident-generator%22%7D
+      title: Analyze a single log line
+      icon: scaffolder
+    - url: https://github.com/louis-fiori/forgepath/issues?q=label%3Aai-analyzer
+      title: Filed incident issues
+      icon: github
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: forgepath
+  dependsOn:
+    - component:default/incident-generator
+    - component:default/observability

@@ -1,0 +1,9 @@
+site_name: incident-generator
+site_description: |
+  Runbook and operational notes for the incident-generator incident fixture.
+
+plugins:
+  - techdocs-core
+
+nav:
+  - Overview: index.md
