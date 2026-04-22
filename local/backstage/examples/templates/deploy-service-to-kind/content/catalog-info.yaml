@@ -1,0 +1,78 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: |
+    Service deployed via the `deploy-service-to-kind` scaffolder template.
+    Image: `${{ values.image }}`.
+
+    This catalog entry, its TechDocs sources (`mkdocs.yml` + `docs/`),
+    and the K8s manifests under `k8s/` are all co-located in
+    `gitops/workloads/${{ values.name }}/`. Edit the runbook under the
+    Docs tab and commit; ArgoCD only applies files under `k8s/`, so the
+    workload itself is unaffected.
+  annotations:
+    # dir:. resolves to this file's containing directory, which holds
+    # mkdocs.yml and docs/. The TechDocs preparer refuses any path that
+    # escapes the entity's parent, so the entity must live next to its
+    # mkdocs.yml.
+    backstage.io/techdocs-ref: dir:.
+
+    # The Kubernetes plugin uses this selector to find the workload's
+    # pods/services in-cluster, feeding the Kubernetes tab (logs, pod
+    # status, events) without any per-service config.
+    backstage.io/kubernetes-label-selector: app=${{ values.name }}
+
+    # Placeholder for the future incident-management wiring (PagerDuty
+    # plugin, OpsGenie, etc.). Leaving the key empty keeps the annotation
+    # discoverable without activating any integration yet.
+    pagerduty.com/integration-key: ''
+  links:
+    # Grafana cluster-pods dashboard. The path is `/d/<uid>` (no slug:
+    # Grafana redirects to the canonical URL). var-namespace is the exact
+    # preview namespace (`preview-scaffold-<service>`), known up-front
+    # because the previews ApplicationSet derives namespace from branch
+    # name, no PR-number regex, no need to filter on pod name.
+    - url: http://localhost:3000/d/cluster-pods?var-namespace=preview-scaffold-${{ values.name }}
+      title: Grafana pod metrics
+      icon: dashboard
+    # Grafana service-logs dashboard. Logs are ingested by the Promtail
+    # DaemonSet (see gitops/platform/loki/), no per-service wiring required.
+    - url: http://localhost:3000/d/service-logs?var-namespace=preview-scaffold-${{ values.name }}
+      title: Grafana logs
+      icon: dashboard
+    # Error-focused view of the same logs, with a severity regex
+    # (default: error|exception|fatal|panic). First place to look when
+    # the service starts misbehaving.
+    - url: http://localhost:3000/d/error-explorer?var-namespace=preview-scaffold-${{ values.name }}
+      title: Grafana errors
+      icon: dashboard
+    # Deep link to the matching ArgoCD Application. The AppSet names it
+    # `preview-<branch>` and the branch is `scaffold-<service>`, so the
+    # URL is fully predictable from the service name.
+    - url: http://localhost:8080/applications/preview-scaffold-${{ values.name }}
+      title: ArgoCD application
+      icon: scaffolder
+{%- if values.exposeOnLocalhost %}
+    # Live workload, reachable on the host because exposeOnLocalhost was
+    # set at scaffold time (NodePort 30080 -> host port 8888, see
+    # local/kind-config.yaml). Only one service can hold this slot at a
+    # time.
+    - url: http://localhost:8888
+      title: Open the live app (localhost:8888)
+      icon: web
+{%- endif %}
+    # Destroy the service: opens the destroy-service-from-kind scaffolder
+    # with the name pre-filled. Submitting closes the preview PR, which
+    # cascades to ArgoCD pruning the namespace and resources. The catalog
+    # entity becomes orphan once the `scaffold-<name>` branch is deleted
+    # on GitHub (enable auto-delete-branches in repo settings to make
+    # this immediate).
+    - url: http://localhost:7007/create/templates/default/destroy-service-from-kind?formData=%7B%22name%22%3A%22${{ values.name }}%22%7D
+      title: Destroy this service
+      icon: scaffolder
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/${{ values.ownerGroup }}
+  system: forgepath

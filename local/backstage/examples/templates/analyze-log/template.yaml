@@ -1,0 +1,110 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: analyze-log
+  title: Analyze a single log line (AI Incident Analyzer)
+  description: |
+    Analyzes ONE log line via the incident-analyzer service. Paste the line directly, or give a substring and the service fetches the newest matching line from Loki. AI produces a diagnosis and (if enabled) a GitHub issue is opened, exactly like a detected incident.
+    This does NOT deploy anything; it's a read-and-analyze action.
+spec:
+  owner: group:default/platform-team
+  type: service
+  parameters:
+    - title: What to analyze
+      required:
+        - namespace
+        - mode
+      properties:
+        namespace:
+          title: Namespace
+          type: string
+          default: incident-generator
+          description: The workload namespace the log belongs to (runbook + issue attribution).
+          ui:autofocus: true
+        mode:
+          title: Input mode
+          type: string
+          enum:
+            - paste
+            - loki
+          enumNames:
+            - Paste a log line
+            - Search Loki for the newest match
+          default: paste
+        openIssue:
+          title: Open a GitHub issue for this run
+          type: boolean
+          default: true
+          description: |
+            Override issue creation just for this analysis. Leave unticked to
+            get the diagnosis without filing an issue.
+      dependencies:
+        mode:
+          oneOf:
+            - properties:
+                mode:
+                  enum: [paste]
+                logLine:
+                  title: Log line
+                  type: string
+                  description: The raw log line to analyze (JSON lines get their error_type/component parsed).
+                  ui:widget: textarea
+                  ui:options:
+                    rows: 4
+              required: [logLine]
+            - properties:
+                mode:
+                  enum: [loki]
+                query:
+                  title: Line filter
+                  type: string
+                  description: Substring to match (LogQL |= filter); the newest matching line wins.
+                window:
+                  title: Lookback window
+                  type: string
+                  default: 10m
+                  description: How far back to search Loki (e.g. 5m, 10m, 1h).
+              required: [query]
+
+  steps:
+    - id: analyze
+      name: Run AI analysis
+      action: incident-analyzer:analyzeLog
+      input:
+        namespace: ${{ parameters.namespace }}
+        logLine: ${{ parameters.logLine }}
+        query: ${{ parameters.query }}
+        window: ${{ parameters.window }}
+        openIssue: ${{ parameters.openIssue }}
+
+  output:
+    links:
+      - title: View the filed GitHub issue
+        url: ${{ steps.analyze.output.issueUrl }}
+        icon: github
+    text:
+      - title: Diagnosis
+        content: |
+          **Namespace:** `${{ parameters.namespace }}`
+          **Detected:** `${{ steps.analyze.output.detected }}`
+
+          **Analyzed line (PII masked):**
+          ```
+          ${{ steps.analyze.output.analyzedLine }}
+          ```
+
+          ${{ steps.analyze.output.summary }}
+
+          | Field | Value |
+          | --- | --- |
+          | Severity | `${{ steps.analyze.output.severity }}` |
+          | Affected component | `${{ steps.analyze.output.affectedComponent }}` |
+          | Confidence | `${{ steps.analyze.output.confidence }}` |
+          | Issue opened | `${{ steps.analyze.output.issueUrl }}` |
+          | Notified | `${{ steps.analyze.output.notified }}` |
+
+          **Probable root cause:** ${{ steps.analyze.output.probableRootCause }}
+
+          **Recommended remediation:** ${{ steps.analyze.output.recommendedRemediation }}
+
+          _Note: ${{ steps.analyze.output.note }}_

@@ -1,0 +1,44 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: destroy-service-from-kind
+  title: Destroy a deployed service
+  description: |
+    Closes the preview PR opened by `deploy-service-to-kind` for a given service name. 
+    ArgoCD's ApplicationSet removes the corresponding `preview-scaffold-<name>` Application within ~60s, which cascades-deletes
+    every resource the workload created in the `preview-scaffold-<name>` namespace (Deployment, Service, ConfigMap, etc.).
+    Idempotent, if no matching PR is open (e.g. it was already closed via the GitHub UI), the action logs a warning and exits cleanly.
+spec:
+  owner: user:guest
+  type: service
+  parameters:
+    - title: Service to destroy
+      required:
+        - name
+      properties:
+        name:
+          title: Service name
+          type: string
+          description: |
+            Matches the `name` you used at deploy time. The action looks for
+            the PR with head branch `scaffold-<name>` and closes it.
+          pattern: '^[a-z]([-a-z0-9]*[a-z0-9])?$'
+
+  steps:
+    - id: close
+      name: Close preview PR
+      action: github:closePullRequest
+      input:
+        repoUrl: github.com?owner=louis-fiori&repo=forgepath
+        branchName: scaffold-${{ parameters.name }}
+
+  output:
+    text:
+      - title: Preview PR closed
+        content: |
+          The preview PR for `${{ parameters.name }}` has been closed.
+
+          ArgoCD will tear down the matching `preview-scaffold-${{ parameters.name }}` Application
+          within ~60s (the ApplicationSet poll cycle), which removes the
+          namespace and all workloads. Watch the cleanup at
+          http://localhost:8080/applications.

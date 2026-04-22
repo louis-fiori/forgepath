@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: observability
+  description: |
+    Observability stack (Prometheus + Grafana + Loki) for the kind cluster.
+    Prometheus scrapes the kubelet/cAdvisor so every pod gets CPU/memory metrics for free, plus any pod annotated with `prometheus.io/scrape: "true"`.
+    Loki ingests container logs from the Promtail DaemonSet.
+    Grafana ships with the Prometheus and Loki datasources pre-wired.
+  annotations:
+    backstage.io/kubernetes-label-selector: 'app in (grafana,prometheus,loki,promtail)'
+  links:
+    - url: http://localhost:3000
+      title: Grafana UI
+      icon: dashboard
+    - url: http://localhost:8080/applications?search=&namespace=&proj=&cluster=
+      title: ArgoCD UI (Prometheus + Grafana applications)
+      icon: scaffolder
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/platform-team
+  system: forgepath
