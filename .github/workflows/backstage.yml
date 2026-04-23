@@ -1,0 +1,104 @@
+name: Backstage CI
+
+# The Backstage app at local/backstage/ is gitignored: it's regenerated every
+# run by `make backstage-init` (npx @backstage/create-app, version pinned in
+# .env.example) and then layered with the forgepath overlay under
+# platform/backstage/. Scaffold + full yarn install is heavy, so this lives in
+# its own workflow with a path filter rather than in ci.yml, whose jobs run on
+# every push/PR. The path lists for push and pull_request are kept identical by
+# hand.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "platform/backstage/**"
+      - "platform/docs/**"
+      - "scripts/backstage-*.sh"
+      - "scripts/_env.sh"
+      - ".env.example"
+      - ".github/workflows/backstage.yml"
+  pull_request:
+    paths:
+      - "platform/backstage/**"
+      - "platform/docs/**"
+      - "scripts/backstage-*.sh"
+      - "scripts/_env.sh"
+      - ".env.example"
+      - ".github/workflows/backstage.yml"
+
+# Least-privilege: this job only reads the repo to typecheck, lint and test.
+permissions:
+  contents: read
+
+# A new push to the same ref cancels an in-progress run, this job is expensive
+# (full scaffold + install) and there's no value finishing a superseded one.
+concurrency:
+  group: backstage-${{ github.ref }}
+  cancel-in-progress: true
+
+# Third-party actions are pinned to a full commit SHA (with the human-readable
+# tag in a comment) so a re-tagged release can't silently change what runs.
+
+jobs:
+  backstage:
+    name: backstage (typecheck + lint + test)
+    runs-on: ubuntu-latest
+    # Scaffold + full Backstage install dominates the runtime; 25m is headroom.
+    timeout-minutes: 25
+    env:
+      # Force yarn 4 to use its global cache (~/.yarn/berry/cache) instead of a
+      # project-local one, so the cache step below — keyed on the scaffold
+      # inputs — actually persists downloads across runs. There's no committed
+      # lockfile to key on (local/backstage/ is gitignored), so we key on the
+      # create-app version (.env.example) plus the overlay's extra backend deps.
+      YARN_ENABLE_GLOBAL_CACHE: "true"
+      # GitHub Actions sets CI=true, which makes Yarn 4 default to immutable
+      # installs. But backstage-init merges package-additions.json into the
+      # backend package.json *after* the scaffold, so `yarn install` must
+      # regenerate the lockfile (YN0028 otherwise). There's no committed
+      # lockfile to enforce here, so immutability is meaningless — disable it.
+      YARN_ENABLE_IMMUTABLE_INSTALLS: "false"
+      # Don't let Corepack block on a "about to download yarn 4.4.1" prompt.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          # local/backstage/package.json requires node "22 || 24"; the scaffold
+          # scripts hard-require 22+.
+          node-version: "22"
+
+      - name: Enable Corepack (provides the yarn 4 the scaffold pins)
+        run: corepack enable
+
+      - name: Restore yarn download cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.yarn/berry/cache
+            ~/.npm
+          key: backstage-${{ runner.os }}-${{ hashFiles('platform/backstage/overlay/package-additions.json', '.env.example') }}
+          restore-keys: |
+            backstage-${{ runner.os }}-
+
+      # Scaffolds local/backstage/, applies the overlay, merges
+      # package-additions.json, and runs yarn install. _env.sh seeds .env from
+      # .env.example and supplies non-secret defaults (owner/repo/branch);
+      # GITHUB_TOKEN is only needed at runtime, so the checkup needs no secrets.
+      - name: Scaffold app + apply overlay (make backstage-init)
+        run: make backstage-init
+
+      - name: Typecheck (yarn tsc)
+        working-directory: local/backstage
+        run: yarn tsc
+
+      - name: Lint (eslint + prettier, all workspaces)
+        working-directory: local/backstage
+        run: yarn lint:all
+
+      - name: Test (jest, all workspaces)
+        working-directory: local/backstage
+        run: yarn test:all
