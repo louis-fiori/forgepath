@@ -1,0 +1,5 @@
+# Keep the build context minimal, only the source the Dockerfile copies is
+# needed. Everything else just slows the context upload.
+*
+!go.mod
+!main.go
