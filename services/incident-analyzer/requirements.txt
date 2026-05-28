@@ -1,0 +1,13 @@
+# High-level runtime spec, pinned to API-stable minors. The fully-resolved,
+# transitively-pinned, hash-verified lock is requirements.lock (used by the
+# Dockerfile and CI); regenerate it after editing this file:
+#   uv pip compile requirements.txt --python-version 3.12 --generate-hashes -o requirements.lock
+# 0.136 lifts the starlette cap past 0.49.1 (CVE-2025-62727, Range-header DoS).
+fastapi==0.136.*
+uvicorn[standard]==0.49.*
+# [bedrock] pulls in boto3 for the AWS SigV4 path (AsyncAnthropicBedrock). The
+# messages/tool-use API this service uses is stable across these minors.
+anthropic[bedrock]==0.109.*
+httpx==0.28.*
+kubernetes==36.*
+pydantic-settings==2.*
