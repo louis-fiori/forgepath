@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident-analyzer
+  namespace: incident-analyzer
+  labels:
+    app: incident-analyzer
+    backstage.io/kubernetes-id: incident-analyzer
+spec:
+  type: ClusterIP
+  selector:
+    app: incident-analyzer
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
