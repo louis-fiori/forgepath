@@ -1,0 +1,178 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+# Least-privilege default. Only the SARIF-upload job widens it (locally).
+permissions:
+  contents: read
+
+# Third-party actions are pinned to a full commit SHA (with the human-readable
+# tag in a comment) so a re-tagged release can't silently change what runs.
+
+jobs:
+  incident-generator:
+    name: incident-generator (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/incident-generator
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version: "1.25"
+          cache: false
+      - name: gofmt (formatting check)
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would reformat these files:"; echo "$unformatted"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee  # v9.2.1
+        with:
+          version: v2.12.2
+          working-directory: services/incident-generator
+      - name: go build
+        run: go build ./...
+      - name: go test
+        run: go test -race ./...
+
+  incident-analyzer:
+    name: incident-analyzer (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/incident-analyzer
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          # Cache keyed on the fully-pinned lock, so a stale cache can't mask a
+          # dependency change (the old wildcard requirements let pip drift).
+          cache-dependency-path: services/incident-analyzer/requirements-dev.lock
+      - name: Install pinned dev dependencies
+        # --require-hashes: a wheel whose sha256 isn't in the lock fails CI.
+        run: pip install --require-hashes -r requirements-dev.lock
+      - name: ruff
+        run: ruff check app tests
+      - name: pytest
+        run: pytest -q
+
+  image-scan:
+    name: image scan (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [incident-generator, incident-analyzer]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build -t ${{ matrix.service }}:ci services/${{ matrix.service }}
+      - name: Trivy image scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ matrix.service }}:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+  iac-scan:
+    name: trivy IaC (misconfig + secrets) → SARIF
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # needed to upload SARIF to the Security tab
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Trivy config scan (K8s / Dockerfile misconfiguration)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config.sarif
+          severity: CRITICAL,HIGH
+      - name: Trivy secret scan (filesystem)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          format: sarif
+          output: trivy-secrets.sarif
+      # Report-only: findings surface in the Security tab rather than hard-failing
+      # the build. The secret scan in particular would otherwise trip over the
+      # intentional secret-shaped *test fixtures* (e.g. tests/test_masking.py's
+      # AKIA…EXAMPLE / JWT / card). Triage there; add a .trivyignore + exit-code
+      # if you want to make it blocking.
+      - name: Upload misconfiguration SARIF
+        if: github.event_name == 'push'   # security-events:write isn't granted on fork PRs
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+      - name: Upload secret SARIF
+        if: github.event_name == 'push'
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
+
+  shellcheck:
+    name: shellcheck (scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        run: |
+          # Only entrypoint scripts carry a shebang; _env.sh is source-only and
+          # followed via `-x` (its `# shellcheck source=` pragmas are honored).
+          # severity=warning: fail on real issues, ignore info/style nits.
+          mapfile -t scripts < <(grep -rl '^#!/usr/bin/env bash' scripts)
+          shellcheck -x --severity=warning "${scripts[@]}"
+
+  manifests:
+    name: kustomize builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Install kubectl (bundles kustomize)
+        run: |
+          curl -sSLo kubectl "https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+      - name: Build every kustomization
+        run: |
+          set -euo pipefail
+          status=0
+          while IFS= read -r kfile; do
+            dir="$(dirname "$kfile")"
+            echo "==> kustomize build $dir"
+            if ! kubectl kustomize "$dir" >/dev/null; then
+              echo "::error file=$kfile::kustomize build failed for $dir"
+              status=1
+            fi
+          done < <(find gitops platform/argocd -name kustomization.yaml | sort)
+          exit $status
