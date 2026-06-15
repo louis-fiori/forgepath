@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: previews
+  namespace: argocd
+spec:
+  syncPolicy:
+    applicationsSync: sync
+    preserveResourcesOnDeletion: false
+
+  generators:
+    # owner/repo (and the template repoURL below) are baked in by `make configure`
+    # (sed), NOT ${...} envsubst: ArgoCD reconciles this straight from git. On a
+    # fork, run `make configure`, then commit + push. targetRevision stays
+    # '{{branch}}' (an AppSet template var configure.sh deliberately won't touch).
+    - pullRequest:
+        github:
+          owner: louis-fiori
+          repo: forgepath
+          labels:
+            - preview
+          tokenRef:
+            secretName: forgepath-repo-creds
+            key: password
+        requeueAfterSeconds: 60
+
+  template:
+    metadata:
+      name: 'preview-{{branch}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/louis-fiori/forgepath.git
+        targetRevision: '{{branch}}'
+        path: gitops/workloads
+        directory:
+          recurse: true
+          include: '*/k8s/*.yaml'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'preview-{{branch}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
