@@ -1,6 +1,11 @@
 // Backstage backend entrypoint. See the README.
 
+import http from 'node:http';
+import https from 'node:https';
 import { createBackend } from '@backstage/backend-defaults';
+
+http.globalAgent = new http.Agent({ keepAlive: false });
+https.globalAgent = new https.Agent({ keepAlive: false });
 
 const backend = createBackend();
 
