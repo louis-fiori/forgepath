@@ -1,9 +1,0 @@
-site_name: incident-analyzer
-site_description: |
-  Runbook and operational notes for the AI Incident Analyzer.
-
-plugins:
-  - techdocs-core
-
-nav:
-  - Overview: index.md
