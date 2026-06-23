@@ -121,9 +121,8 @@ spec:
         gitAuthorName: forgepath-scaffolder
         gitAuthorEmail: scaffolder@forgepath.local
 
-    # publish:github:pull-request does not support labels in its input schema,
-    # so we apply the `preview` label as a post-step. The ApplicationSet only
-    # picks up PRs that carry this label.
+    # publish:github:pull-request can't set labels, so we add `preview` as a
+    # post-step. The ApplicationSet only picks up PRs carrying this label.
     - id: label
       name: Apply preview label
       action: github:addLabels
@@ -133,12 +132,10 @@ spec:
         labels:
           - preview
 
-    # Register the freshly-pushed catalog-info.yaml so the Component appears
-    # in Backstage immediately, while the PR is still open. The URL points
-    # at the PR branch (scaffold-<name>); once that branch is deleted (after
-    # merge or PR close) the location becomes a 404 and Backstage marks the
-    # entity orphaned on the next refresh. A `main`-targeted discovery
-    # provider will replace this step when the prod flow is wired up.
+    # Register the freshly-pushed catalog-info.yaml so the Component appears in
+    # Backstage immediately. The URL points at the PR branch; once that branch is
+    # deleted (merge or close) the location 404s and the entity is marked orphaned
+    # on the next refresh. A `main`-targeted discovery provider will replace this.
     - id: register
       name: Register Component in Backstage catalog
       action: catalog:register

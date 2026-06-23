@@ -62,9 +62,8 @@ def test_single_log_metric_is_described():
 
 
 def test_diagnosis_rejects_out_of_range_and_freeform_values():
-    # The LLM's structured output is validated, not trusted: a bad confidence
-    # (would render as "500%") or a free-form severity (arbitrary GitHub label)
-    # must fail closed.
+    # LLM structured output is validated, not trusted: a bad confidence (renders as
+    # "500%") or free-form severity (arbitrary GitHub label) must fail closed.
     import pytest
     from pydantic import ValidationError
 

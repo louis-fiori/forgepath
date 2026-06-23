@@ -34,9 +34,8 @@ data:
             period: 24h
 
     limits_config:
-      # Generous demo defaults, these are intentionally permissive so a
-      # bursty preview workload won't get throttled in the middle of a
-      # walkthrough. Tighten before any production use.
+      # Intentionally permissive demo defaults so a bursty preview workload
+      # isn't throttled mid-walkthrough. Tighten before any production use.
       ingestion_rate_mb: 16
       ingestion_burst_size_mb: 32
       reject_old_samples: false

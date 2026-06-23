@@ -91,11 +91,10 @@ class DedupCache:
         self._locks: dict[str, asyncio.Lock] = {}
 
     def lock_for(self, fingerprint: str) -> asyncio.Lock:
-        """Per-fingerprint lock so two concurrent cycles for the *same* incident
-        (e.g. the background poller racing an on-demand /analyze) serialize across
-        the analyze/surface awaits. This closes the should_escalate→record TOCTOU:
-        without it both could pass the dedup check and file duplicate issues.
-        asyncio is single-threaded, so dict.setdefault here is atomic."""
+        """Per-fingerprint lock so concurrent cycles for the *same* incident (e.g. the
+        poller racing an on-demand /analyze) serialize across the analyze/surface awaits,
+        closing the should_escalate→record TOCTOU where both pass the dedup check and file
+        duplicate issues. asyncio is single-threaded, so dict.setdefault here is atomic."""
         return self._locks.setdefault(fingerprint, asyncio.Lock())
 
     def should_escalate(self, fingerprint: str, force: bool = False) -> bool:
@@ -114,9 +113,9 @@ class DedupCache:
             entry["issue_url"] = issue_url
 
     def _prune(self, now: float) -> None:
-        """Drop entries past 2× the cooldown to bound memory in a long-lived pod
-        (a stale entry re-escalates anyway). A held lock is kept so an in-flight
-        cycle never has its lock swapped out, which would reopen the TOCTOU."""
+        """Drop entries past 2× the cooldown to bound memory in a long-lived pod (a stale
+        entry re-escalates anyway). A held lock is kept so an in-flight cycle never has its
+        lock swapped out, which would reopen the TOCTOU."""
         cutoff = now - 2 * self._cooldown
         stale = [fp for fp, e in self._entries.items() if e.get("last_filed", 0) < cutoff]
         for fp in stale:

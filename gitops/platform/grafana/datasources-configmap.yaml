@@ -16,9 +16,9 @@ data:
         url: http://prometheus.prometheus.svc.cluster.local:9090
         isDefault: true
         editable: true
-      # Loki collects container logs for every pod in the cluster via the
-      # Promtail DaemonSet (see gitops/platform/loki/). The "Service logs"
-      # dashboard ships with it; ad-hoc queries are available under Explore.
+      # Loki collects container logs for every pod via the Promtail DaemonSet
+      # (see gitops/platform/loki/). Ships the "Service logs" dashboard; ad-hoc
+      # queries are under Explore.
       - name: Loki
         type: loki
         uid: loki

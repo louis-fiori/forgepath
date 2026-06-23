@@ -17,11 +17,10 @@ from .models import Diagnosis, IncidentCandidate
 
 
 def make_client():
-    """Build the Anthropic client for the configured provider (Bedrock SigV4 or
-    direct API key). Built once at startup and reused; the SDK wraps a pooled
-    httpx client, so one per call would leak a pool. timeout/max_retries are
-    capped low because the poller is sequential and SDK defaults could stack into
-    a multi-minute freeze. For Bedrock, an explicit access key wins over a profile."""
+    """Build the Anthropic client for the provider (Bedrock SigV4 or direct API key).
+    Built once at startup and reused; the SDK pools httpx, so one per call leaks a pool.
+    timeout/max_retries capped low: the poller is sequential, so SDK defaults could stack
+    into a multi-minute freeze. For Bedrock, an explicit access key wins over a profile."""
     if settings.llm_provider == "bedrock":
         kwargs: dict = {
             "aws_region": settings.aws_region,
@@ -90,9 +89,9 @@ def _mask(text: str) -> str:
     return redact(text) if settings.masking_enabled else text
 
 
-# Tags used to fence untrusted evidence in the user message. The persona tells
-# the model to never act on instructions inside these tags; this regex stops a
-# crafted log line from *forging* a closing tag to "break out" of the fence.
+# Tags that fence untrusted evidence in the user message. The persona never acts on
+# instructions inside them; this regex stops a crafted log line from *forging* a closing
+# tag to "break out" of the fence.
 _FENCE_RE = re.compile(r"(?i)<\s*/?\s*(?:log_samples|log_line|pod_events)\s*/?\s*>?")
 
 
@@ -107,10 +106,10 @@ def _evidence(text: str) -> str:
 
 
 def _incident_context(c: IncidentCandidate) -> str:
-    # Only the user message varies between modes; the cached prefix stays
-    # byte-identical so both share one cache entry. Untrusted log/pod text is
-    # wrapped in <log_samples>/<log_line>/<pod_events> tags and defanged; the
-    # persona treats anything inside those tags as data, never instructions.
+    # Only the user message varies between modes; the cached prefix stays byte-identical
+    # so both share one cache entry. Untrusted log/pod text is wrapped in
+    # <log_samples>/<log_line>/<pod_events> tags and defanged; the persona treats anything
+    # inside those tags as data, never instructions.
     if c.signal_class == "single-log":
         lines = [
             f"Namespace: {c.namespace}",
@@ -185,17 +184,16 @@ async def analyze(candidate: IncidentCandidate, runbook_md: str, client) -> Diag
         messages=[{"role": "user", "content": _incident_context(candidate)}],
     )
 
-    # A max_tokens stop means the forced tool call was cut off mid-JSON: the
-    # tool_use input is partial, so any Diagnosis built from it would be
-    # truncated/garbage. Fail loud instead of surfacing half a diagnosis.
+    # A max_tokens stop cut the forced tool call off mid-JSON: the tool_use input is
+    # partial, so any Diagnosis built from it is garbage. Fail loud, don't surface half one.
     if response.stop_reason == "max_tokens":
         raise RuntimeError("diagnosis truncated: hit max_tokens before the tool call completed")
 
     for block in response.content:
         if block.type == "tool_use" and block.name == "record_diagnosis":
             data = block.input if isinstance(block.input, dict) else json.loads(block.input)
-            # Diagnosis enforces the severity enum + confidence range; a bad
-            # value raises ValidationError, caught upstream as an analysis failure.
+            # Diagnosis enforces the severity enum + confidence range; a bad value
+            # raises ValidationError, caught upstream as an analysis failure.
             return Diagnosis(**data)
 
     raise RuntimeError("Claude did not return a record_diagnosis tool call")

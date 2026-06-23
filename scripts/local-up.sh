@@ -60,16 +60,15 @@ if [ "${RUNTIME}" = "kind" ] && docker image inspect forgepath/backstage:dev >/d
   kind load docker-image forgepath/backstage:dev --name "${CLUSTER_NAME}"
 fi
 
-# Side-load the incident-generator fixture image if it's been built locally
-# (`make incident-generator-build`). The manifests pull it with
-# imagePullPolicy: IfNotPresent, so it must be in the node image cache before
-# ArgoCD deploys the Deployment. Optional, absence is not an error.
+# Side-load the incident-generator fixture image if built locally
+# (`make incident-generator-build`). Manifests use imagePullPolicy: IfNotPresent,
+# so it must be in the node cache before ArgoCD deploys. Optional; absence is OK.
 if [ "${RUNTIME}" = "kind" ] && docker image inspect incident-generator:dev >/dev/null 2>&1; then
   echo "==> loading incident-generator:dev into kind"
   kind load docker-image incident-generator:dev --name "${CLUSTER_NAME}"
 fi
 
-# Side-load the incident-analyzer (AI Incident Analyzer) image if built locally
+# Side-load the incident-analyzer image if built locally
 # (`make incident-analyzer-build`). Same IfNotPresent contract as above.
 if [ "${RUNTIME}" = "kind" ] && docker image inspect incident-analyzer:dev >/dev/null 2>&1; then
   echo "==> loading incident-analyzer:dev into kind"
@@ -77,18 +76,16 @@ if [ "${RUNTIME}" = "kind" ] && docker image inspect incident-analyzer:dev >/dev
 fi
 
 echo "==> installing ArgoCD (v3.4.2)"
-# Server-Side Apply is mandatory here: the upstream applicationsets.argoproj.io
-# CRD is too big to fit in kubectl's `last-applied-configuration` annotation
-# (>256KB) and a regular client-side apply fails on a fresh cluster.
+# Server-Side Apply is mandatory: the applicationsets.argoproj.io CRD exceeds the
+# 256KB `last-applied-configuration` annotation limit, so client-side apply fails.
 kubectl --context "${KCTX}" apply -k "${REPO_ROOT}/platform/argocd/install" \
   --server-side --force-conflicts
 
 echo "==> waiting for ArgoCD server rollout (up to 5 min)"
 kubectl --context "${KCTX}" -n argocd rollout status deploy/argocd-server --timeout=300s
 
-# Backstage and ArgoCD each need the PAT as a K8s Secret in their namespace.
-# Both are generated here from $GITHUB_TOKEN, single source of truth, no
-# .local.yaml files to maintain.
+# Backstage and ArgoCD each need the PAT as a Secret in their namespace, both
+# generated here from $GITHUB_TOKEN (single source of truth, no .local.yaml).
 echo "==> ensuring namespaces argocd, backstage, grafana, incident-analyzer exist"
 for ns in argocd backstage grafana incident-analyzer; do
   kubectl --context "${KCTX}" create namespace "${ns}" \
@@ -96,19 +93,16 @@ for ns in argocd backstage grafana incident-analyzer; do
     kubectl --context "${KCTX}" apply -f - >/dev/null
 done
 
-# Generate a random Grafana admin password on first install (mirrors the
-# ArgoCD bootstrap secret pattern). If the Secret already exists we keep
-# the current value, re-running local-up.sh doesn't rotate the password.
-# Read it back with `make grafana-pw`.
+# Generate a random Grafana admin password on first install (mirrors the ArgoCD
+# bootstrap secret pattern). If the Secret exists we keep it, so re-running
+# doesn't rotate the password. Read it back with `make grafana-pw`.
 if ! kubectl --context "${KCTX}" -n grafana get secret grafana-admin >/dev/null 2>&1; then
-  # 12 random bytes -> 24 hex chars. Using openssl (rather than the more
-  # idiomatic `tr -dc … </dev/urandom | head -c 24`) avoids a SIGPIPE
-  # trap: head exits after 24 bytes, the closed pipe makes tr exit 141,
-  # and `set -o pipefail` then aborts the whole script.
+  # 12 random bytes -> 24 hex chars. openssl avoids the SIGPIPE trap of
+  # `tr -dc … </dev/urandom | head -c 24`: head closes the pipe, tr exits 141,
+  # and pipefail aborts the script.
   GRAFANA_PW="$(openssl rand -hex 12)"
-  # Apply via a stdin heredoc, not `--from-literal`: literal values land in the
-  # process argv and are readable by any local user via `ps` while the command
-  # runs. stringData keeps the password on stdin only.
+  # stdin heredoc, not `--from-literal`: literal values land in the process argv,
+  # readable by any local user via `ps`. stringData keeps the password on stdin only.
   cat <<EOF | kubectl --context "${KCTX}" apply -f - >/dev/null
 apiVersion: v1
 kind: Secret
@@ -126,9 +120,8 @@ else
 fi
 
 echo "==> creating Secret backstage/backstage-github-token from \$GITHUB_TOKEN"
-# Mounted into the Backstage backend as the GITHUB_TOKEN env var. Drives the
-# built-in publish:github:pull-request action and the custom
-# github:closePullRequest action.
+# Mounted into the Backstage backend as GITHUB_TOKEN. Drives the built-in
+# publish:github:pull-request and the custom github:closePullRequest actions.
 # stdin heredoc (not --from-literal) so the PAT never appears in the process argv.
 cat <<EOF | kubectl --context "${KCTX}" apply -f - >/dev/null
 apiVersion: v1
@@ -140,10 +133,9 @@ stringData:
   token: "${GITHUB_TOKEN}"
 EOF
 
-# Shared service-to-service token for Backstage notifications. Reuse the
-# existing one if present (don't rotate on re-run); else take it from
-# $BACKSTAGE_S2S_TOKEN (.env), else generate a random one. The SAME value is
-# mounted into Backstage (backstage-s2s-token) and the analyzer
+# Shared service-to-service token for Backstage notifications. Reuse the existing
+# one if present (don't rotate on re-run), else $BACKSTAGE_S2S_TOKEN (.env), else
+# random. The SAME value goes into Backstage (backstage-s2s-token) and the analyzer
 # (incident-analyzer-secrets) so the bearer token matches on both ends.
 if S2S="$(kubectl --context "${KCTX}" -n backstage get secret backstage-s2s-token \
       -o jsonpath='{.data.token}' 2>/dev/null | base64 -d)" && [ -n "${S2S}" ]; then
@@ -166,15 +158,15 @@ EOF
 echo "==> creating Secret incident-analyzer/incident-analyzer-secrets"
 # ANTHROPIC_API_KEY enables the direct-API LLM path; GITHUB_TOKEN files issues
 # (needs Issues: write); the s2s token matches Backstage for notifications.
-# Bedrock auth is either AWS_PROFILE (from the mounted ~/.aws) or an explicit
-# AWS_ACCESS_KEY_ID/SECRET (+ session token), the access key wins when set.
+# Bedrock auth is AWS_PROFILE (from mounted ~/.aws) or explicit
+# AWS_ACCESS_KEY_ID/SECRET (+ session token); the access key wins when set.
 # MASKING_ENABLED redacts PII/cardholder data from log samples before the LLM.
-# The non-secret keys (provider, model, thresholds, github owner/repo/branch)
-# ride along so every .env setting reaches the pod without a manifest edit.
-# Any empty value just disables that one path (the env refs are optional).
-# stdin heredoc (not --from-literal) so the API key / PAT / token never appear
-# in the process argv. Numbers and booleans are quoted to stay strings in
-# stringData (k8s rejects non-string stringData values).
+# Non-secret keys (provider, model, thresholds, github owner/repo/branch) ride
+# along so every .env setting reaches the pod without a manifest edit. Empty
+# values just disable that path (env refs are optional).
+# stdin heredoc (not --from-literal) so the API key / PAT / token never hit the
+# process argv. Numbers/booleans quoted to stay strings (k8s rejects non-string
+# stringData values).
 cat <<EOF | kubectl --context "${KCTX}" apply -f - >/dev/null
 apiVersion: v1
 kind: Secret
@@ -182,9 +174,9 @@ metadata:
   name: incident-analyzer-secrets
   namespace: incident-analyzer
 stringData:
-  # Keys are the env var names the analyzer reads: the Deployment injects the
-  # whole Secret via `envFrom: secretRef`, so each key must match its env var
-  # exactly (UPPER_SNAKE). Keep in sync with scripts/incident-analyzer-secrets.sh.
+  # Keys are env var names: the Deployment injects the whole Secret via
+  # `envFrom: secretRef`, so each must match its env var exactly (UPPER_SNAKE).
+  # Keep in sync with scripts/incident-analyzer-secrets.sh.
   ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
   AWS_PROFILE: "${AWS_PROFILE:-default}"
   AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
@@ -208,12 +200,10 @@ stringData:
 EOF
 unset S2S
 
-# Materialize the local ~/.aws into a Secret mounted at /aws in the analyzer
-# pod, so the Bedrock path can resolve an AWS profile (static-key or assume-role)
-# without copying keys into .env. Skip this entirely if you set
-# AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY above, those need no ~/.aws mount.
-# Only the files that exist are included; if you have no ~/.aws the Secret is
-# created empty and the optional volume no-ops.
+# Materialize local ~/.aws into a Secret mounted at /aws so the Bedrock path can
+# resolve an AWS profile (static-key or assume-role) without keys in .env. Not
+# needed if you set AWS_ACCESS_KEY_ID/SECRET above. Only existing files are
+# included; with no ~/.aws the Secret is empty and the optional volume no-ops.
 AWS_DIR="${AWS_CONFIG_DIR:-$HOME/.aws}"
 AWS_FROM_FILE=()
 [ -f "${AWS_DIR}/config" ] && AWS_FROM_FILE+=(--from-file=config="${AWS_DIR}/config")
@@ -229,9 +219,9 @@ else
 fi
 
 echo "==> creating Secret argocd/forgepath-repo-creds from \$GITHUB_TOKEN"
-# ArgoCD reads this via the `argocd.argoproj.io/secret-type: repo-creds`
-# label. Used to clone the fork over HTTPS and to authenticate the
-# pullRequest ApplicationSet generator against the GitHub API.
+# ArgoCD reads this via the `argocd.argoproj.io/secret-type: repo-creds` label,
+# to clone the fork over HTTPS and authenticate the pullRequest ApplicationSet
+# generator against the GitHub API.
 cat <<EOF | kubectl --context "${KCTX}" apply -f - >/dev/null
 apiVersion: v1
 kind: Secret
@@ -249,11 +239,10 @@ EOF
 
 echo "==> applying ArgoCD bootstrap ApplicationSets"
 echo "    (resolving FORGEPATH_* placeholders: ${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}@${FORGEPATH_TARGET_BRANCH})"
-# Each bootstrap manifest carries ${FORGEPATH_*} placeholders that we render
-# here and apply directly — ArgoCD never reads them from git, so envsubst is
-# honored and a fork needs nothing beyond .env (no `make configure`, no commit).
-# The Applications these ApplicationSets generate live in-cluster with the
-# rendered values; only the workload manifests under gitops/ are pulled from git.
+# Bootstrap manifests carry ${FORGEPATH_*} placeholders rendered and applied here
+# — ArgoCD never reads them from git, so a fork needs nothing beyond .env (no
+# `make configure`, no commit). The generated Applications live in-cluster with
+# rendered values; only workload manifests under gitops/ are pulled from git.
 for _manifest in "${REPO_ROOT}"/platform/argocd/bootstrap/*.yaml; do
   forgepath_render "${_manifest}" | kubectl --context "${KCTX}" apply -f -
 done

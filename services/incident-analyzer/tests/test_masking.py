@@ -79,9 +79,8 @@ def test_json_quoted_secret_redacted():
 
 
 def test_underscore_prefixed_secret_keys_redacted():
-    # Regression: a leading `\b` on the keyword refused to fire when the keyword
-    # sits behind an underscore (`_` is a word char → no boundary), leaving the
-    # most common key shapes leaking. These must all be masked now.
+    # Regression: a leading `\b` refused to fire behind an underscore (`_` is a
+    # word char → no boundary), leaking the most common key shapes. Must mask now.
     cases = [
         ("db_password=hunter2", "hunter2"),
         ("aws_secret_access_key=AKIAabc/secretvalue123", "secretvalue123"),
@@ -96,16 +95,15 @@ def test_underscore_prefixed_secret_keys_redacted():
 
 
 def test_auth_substring_keys_not_false_positive():
-    # Anchoring the keyword right before the separator keeps `auth` from firing
-    # inside ordinary words; these carry no secret and must be left intact.
+    # Anchoring the keyword to the separator keeps `auth` from firing inside
+    # ordinary words; these carry no secret and must stay intact.
     for line in ("author=bob", "authenticated=true", "authority: high"):
         assert redact(line) == line
 
 
 def test_quoted_secret_value_with_spaces_not_truncated():
-    # Regression: the bare-token value class stopped at the first space, leaking
-    # everything after it (password = "p@ss w0rd" → left `w0rd"`). A quoted value
-    # must be consumed up to its closing quote.
+    # Regression: the bare-token value stopped at the first space, leaking the rest
+    # (password = "p@ss w0rd" → left `w0rd"`). Quoted values must run to the close quote.
     for line, secret in (
         ('password = "p@ss w0rd"', 'w0rd'),
         ("secret = 'p ss wd!'", "p ss wd!"),
@@ -117,8 +115,8 @@ def test_quoted_secret_value_with_spaces_not_truncated():
 
 
 def test_private_key_pem_block_redacted():
-    # A full PEM block (BEGIN…END) must be redacted as a unit so the base64 body
-    # never leaks. Covers RSA / EC / OPENSSH / generic labels.
+    # A full PEM block (BEGIN…END) is redacted as a unit so the base64 body never
+    # leaks. Covers RSA / EC / OPENSSH / generic labels.
     for label in ("RSA PRIVATE KEY", "EC PRIVATE KEY", "OPENSSH PRIVATE KEY", "PRIVATE KEY"):
         pem = (
             f"-----BEGIN {label}-----\n"
@@ -156,8 +154,8 @@ def test_keyword_suffixed_secret_keys_redacted():
 
 
 def test_config_keys_with_keyword_substring_not_redacted():
-    # The bounded suffix must not over-fire on ordinary config knobs whose name
-    # merely contains a keyword followed by an unlisted word (bucket/expiry).
+    # The bounded suffix must not over-fire on config knobs whose name merely
+    # contains a keyword plus an unlisted word (bucket/expiry).
     for line in ("token-bucket-size=100", "token_expiry_seconds=3600", "authenticated=true"):
         assert redact(line) == line, line
 

@@ -1,10 +1,7 @@
-# Multi-stage: install deps into a venv, then copy into a slim runtime.
-# Runs as non-root. No build toolchain in the final image.
-#
-# Base pinned by digest (python:3.12-slim as of 2026-06) so rebuilds are
-# reproducible and a re-tagged upstream can't change what ships. Bump the digest
-# periodically (docker buildx imagetools inspect python:3.12-slim); the apt
-# upgrade in the runtime stage still pulls Debian security fixes at build time.
+# Multi-stage: install deps into a venv, then copy into a slim non-root runtime
+# (no build toolchain in the final image). Base pinned by digest for reproducible
+# rebuilds; bump periodically (docker buildx imagetools inspect python:3.12-slim) —
+# the runtime apt upgrade still pulls Debian security fixes at build time.
 FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9 AS build
 WORKDIR /app
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -13,8 +10,7 @@ ENV PATH="/venv/bin:$PATH"
 COPY requirements.txt requirements.lock ./
 # Install the hash-verified lock. --require-hashes rejects any wheel whose sha256
 # isn't pinned; --no-deps stops pip re-resolving (the lock is the full closure).
-# Regenerate after editing requirements.txt:
-#   uv pip compile requirements.txt --python-version 3.12 --generate-hashes -o requirements.lock
+# Regenerate: uv pip compile requirements.txt --python-version 3.12 --generate-hashes -o requirements.lock
 RUN pip install --require-hashes --no-deps -r requirements.lock
 
 FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9

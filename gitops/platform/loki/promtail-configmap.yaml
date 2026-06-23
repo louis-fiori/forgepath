@@ -11,31 +11,28 @@ data:
       log_level: info
 
     positions:
-      # Persisted between promtail restarts so it doesn't replay all logs on
-      # crash. emptyDir is fine, losing positions just means a one-time
-      # re-ingestion on pod restart.
+      # Persisted across restarts so promtail doesn't replay all logs on crash.
+      # emptyDir is fine: losing positions just means a one-time re-ingestion.
       filename: /run/promtail/positions.yaml
 
     clients:
       - url: http://loki.loki.svc.cluster.local:3100/loki/api/v1/push
 
     scrape_configs:
-      # Single scrape job that picks up every container log on the node
-      # (kubelet writes them to /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log).
-      # The Kubernetes SD enriches each log line with namespace/pod/container
-      # labels, which is what makes the "filter by namespace" query in
-      # Grafana feel snappy.
+      # Single scrape job for every container log on the node. Kubernetes SD
+      # enriches each line with namespace/pod/container labels, which makes the
+      # "filter by namespace" query in Grafana snappy.
       - job_name: kubernetes-pods
         kubernetes_sd_configs:
           - role: pod
         pipeline_stages:
-          # Container runtime in kind is containerd, its log lines are
-          # CRI-format (`<timestamp> <stream> <flags> <log>`). Extract the
-          # payload so the Logs panel shows clean log text, not the prefix.
+          # kind uses containerd; its lines are CRI-format
+          # (`<timestamp> <stream> <flags> <log>`). Extract the payload so the
+          # Logs panel shows clean text, not the prefix.
           - cri: {}
         relabel_configs:
-          # Drop logs from pods not on this node (DaemonSet, so each pod
-          # only handles its own node's logs, avoids duplicate ingestion).
+          # Each DaemonSet pod handles only its own node's logs (no duplicate
+          # ingestion).
           - source_labels: [__meta_kubernetes_pod_node_name]
             target_label: __host__
           - action: labelmap
@@ -46,8 +43,7 @@ data:
             target_label: pod
           - source_labels: [__meta_kubernetes_pod_container_name]
             target_label: container
-          # Build the log file path promtail tails. Matches kubelet's
-          # on-disk layout exactly.
+          # Build the log file path promtail tails (kubelet's on-disk layout).
           - source_labels:
               - __meta_kubernetes_pod_uid
               - __meta_kubernetes_pod_container_name

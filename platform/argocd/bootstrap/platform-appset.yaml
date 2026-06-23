@@ -4,13 +4,11 @@ metadata:
   name: platform
   namespace: argocd
 spec:
-  # repoURL/targetRevision below are ${FORGEPATH_*} placeholders that
-  # scripts/local-up.sh renders (forgepath_render/sed) before kubectl-applying
-  # this manifest. envsubst works *here* — unlike the old gitops/apps/*.yaml —
-  # because the bootstrap applies this file directly; ArgoCD never reads it
-  # from git. A fork just edits .env and re-runs `make local-up`: no in-place
-  # rebrand, no `make configure`, no commit. The Applications this AppSet
-  # generates live in-cluster, so they carry the rendered values, not ${...}.
+  # repoURL/targetRevision below carry ${FORGEPATH_*} placeholders that
+  # scripts/local-up.sh renders before kubectl-applying. envsubst works here
+  # (the bootstrap applies this file directly; ArgoCD never reads it from git),
+  # so a fork just edits .env and re-runs `make local-up`. The generated
+  # Applications live in-cluster with the rendered values, not ${...}.
   generators:
     # One Application per platform component. Adding a component = add its name
     # here; its manifests live under gitops/platform/<name>/.
@@ -38,9 +36,9 @@ spec:
       syncPolicy:
         automated:
           prune: true
-          # selfHeal stays off for platform components on purpose: it lets an operator
-          # debug in-place (kubectl edit/scale) before ArgoCD reconciles. Documented in
-          # docs/architecture.md. (previews use selfHeal: true — Git is source of truth.)
+          # selfHeal off on purpose: an operator can debug in-place (kubectl
+          # edit/scale) before ArgoCD reconciles (see docs/architecture.md;
+          # previews use selfHeal: true — Git is source of truth).
           selfHeal: false
         syncOptions:
           - ServerSideApply=true

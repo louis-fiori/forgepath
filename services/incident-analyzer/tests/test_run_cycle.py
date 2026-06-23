@@ -1,6 +1,6 @@
 """Tests for the poller's run_cycle path. Key concern: masking parity with the
-single-log path, since run_cycle returns its raw-sourced candidate verbatim in
-the /analyze response, so PII must be scrubbed before it leaves the service."""
+single-log path — run_cycle returns its raw-sourced candidate verbatim in /analyze,
+so PII must be scrubbed before it leaves the service."""
 
 from __future__ import annotations
 
@@ -78,8 +78,8 @@ def test_run_cycle_leaves_pii_when_masking_disabled(monkeypatch):
 
 
 def test_concurrent_cycles_same_fingerprint_file_one_issue(monkeypatch):
-    # Regression (TOCTOU): two cycles for the same incident running concurrently
-    # (poller vs on-demand /analyze) must not both pass dedup and file twice.
+    # Regression (TOCTOU): two concurrent cycles for the same incident (poller vs
+    # on-demand /analyze) must not both pass dedup and file twice.
     monkeypatch.setattr(settings, "masking_enabled", False)
     monkeypatch.setattr(type(settings), "llm_enabled", property(lambda self: True))
 

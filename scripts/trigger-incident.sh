@@ -2,11 +2,10 @@
 # Trigger an incident on the incident-generator from the host.
 #
 # The generator runs in-cluster (namespace incident-generator) and exposes
-# on-demand failure endpoints (/boom, /panic, /crash, /leak, /slow,
-# /error/<type>). With the dedicated NodePort it's reachable at
-# http://localhost:8889; if that host port isn't mapped, a cluster created
-# before this mapping existed, or a runtime without it, the script falls back
-# to an ephemeral `kubectl port-forward`, so it works either way.
+# on-demand failure endpoints (/boom, /panic, /crash, /leak, /slow, /error/<type>),
+# reachable at http://localhost:8889 via the NodePort. If that host port isn't
+# mapped (older cluster or a runtime without it), the script falls back to an
+# ephemeral `kubectl port-forward`, so it works either way.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -72,8 +71,8 @@ while [ $# -gt 0 ]; do
 done
 
 # --- Resolve a reachable base URL ------------------------------------------
-# Probe the configured URL; if it doesn't answer, stand up a temporary
-# port-forward to the in-cluster Service and use that instead.
+# Probe the configured URL; if it doesn't answer, port-forward to the in-cluster
+# Service and use that instead.
 PF_PID=""
 cleanup() { [ -n "${PF_PID}" ] && kill "${PF_PID}" 2>/dev/null || true; }
 trap cleanup EXIT

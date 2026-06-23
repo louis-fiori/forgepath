@@ -1,8 +1,6 @@
-# Multi-stage build: compile a static binary, ship it on distroless.
-# The result is a few MB, runs as nonroot, and contains no shell or package
-# manager, nothing to exploit, nothing to patch.
-#
-# Bases pinned by multi-arch index digest (reproducible on amd64 CI + arm64 dev).
+# Multi-stage: compile a static binary, ship it on distroless — a few MB, runs as
+# nonroot, no shell or package manager (nothing to exploit or patch). Bases pinned
+# by multi-arch index digest (reproducible on amd64 CI + arm64 dev).
 # Bump: docker buildx imagetools inspect <image>
 
 FROM golang:1.25-alpine@sha256:523c3effe300580ed375e43f43b1c9b091b68e935a7c3a92bfcc4e7ed55b18c2 AS build

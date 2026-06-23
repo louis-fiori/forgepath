@@ -38,10 +38,9 @@ spec:
             - name: http
               containerPort: 3000
           env:
-            # Admin credentials live in the `grafana-admin` Secret, created
-            # by scripts/local-up.sh with a random password on first install
-            # (mirrors ArgoCD's argocd-initial-admin-secret pattern). Read
-            # the current password with `make grafana-pw`.
+            # Admin credentials live in the `grafana-admin` Secret, created by
+            # scripts/local-up.sh with a random password on first install. Read
+            # the current one with `make grafana-pw`.
             - name: GF_SECURITY_ADMIN_USER
               valueFrom:
                 secretKeyRef:

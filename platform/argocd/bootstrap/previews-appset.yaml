@@ -10,10 +10,9 @@ spec:
 
   generators:
     # owner/repo and the template repoURL/targetRevision below are ${FORGEPATH_*}
-    # placeholders rendered by scripts/local-up.sh before apply (the bootstrap
-    # kubectl-applies this file directly; ArgoCD never reads it from git, so
-    # envsubst works). '{{branch}}' is an AppSet template var the pullRequest
-    # generator fills per PR — left as-is, not a placeholder.
+    # placeholders rendered by scripts/local-up.sh before apply (ArgoCD never
+    # reads this file from git, so envsubst works). '{{branch}}' is an AppSet
+    # template var the pullRequest generator fills per PR — not a placeholder.
     - pullRequest:
         github:
           owner: ${FORGEPATH_GITHUB_OWNER}

@@ -32,9 +32,8 @@ spec:
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
-            # Writes are already redirected to /tmp (HOME=/tmp, mounted writable
-            # below), so the root fs can be read-only. Python just skips writing
-            # .pyc to the read-only /app, which is fine.
+            # Root fs read-only: writes go to /tmp (HOME=/tmp, mounted below).
+            # Python just skips writing .pyc to /app, which is fine.
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
@@ -43,20 +42,17 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # All secret-backed config comes from the incident-analyzer-secrets
-          # Secret, whose keys are named exactly as these env vars (UPPER_SNAKE),
-          # so a single secretRef replaces ~20 individual secretKeyRef blocks.
-          # optional: the Secret may be absent in poll-only/local dev, and a
-          # missing key just leaves that var unset (the app falls back to its
-          # default). Keep the Secret's keys in sync with scripts/local-up.sh and
-          # scripts/incident-analyzer-secrets.sh.
+          # Secret-backed config comes from the incident-analyzer-secrets Secret;
+          # its keys match these env vars (UPPER_SNAKE), so one secretRef replaces
+          # ~20 secretKeyRef blocks. optional: absent in local/poll-only dev, a
+          # missing key just leaves the var at its default. Keep keys in sync with
+          # scripts/local-up.sh and scripts/incident-analyzer-secrets.sh.
           envFrom:
             - secretRef:
                 name: incident-analyzer-secrets
                 optional: true
-          # Fixed, non-secret config stays explicit. An env entry wins over
-          # envFrom on a name clash; there is none here (these names aren't in
-          # the Secret).
+          # Fixed, non-secret config. An explicit env entry would win over envFrom
+          # on a name clash; there's none here (these names aren't in the Secret).
           env:
             - name: AWS_CONFIG_FILE
               value: "/aws/config"
@@ -86,8 +82,8 @@ spec:
             - name: aws
               mountPath: /aws
               readOnly: true
-            # Writable scratch for HOME=/tmp (botocore/SSO caches, temp files)
-            # now that the root fs is read-only.
+            # Writable scratch for HOME=/tmp (botocore/SSO caches) now that the
+            # root fs is read-only.
             - name: tmp
               mountPath: /tmp
           resources:

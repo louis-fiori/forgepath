@@ -13,9 +13,8 @@ BACKSTAGE_DIR="${REPO_ROOT}/local/backstage"
 OVERLAY_DIR="${REPO_ROOT}/platform/backstage/overlay"
 
 # Pinned so every clone scaffolds the exact generation the overlay (and the
-# baseline in platform/backstage/overlay/upstream/) was authored against.
-# Bumping it (in .env) is a deliberate step, see "Upgrading the scaffold" in
-# platform/backstage/overlay/README.md.
+# baseline in overlay/upstream/) was authored against. Bumping it (in .env) is
+# deliberate: see "Upgrading the scaffold" in overlay/README.md.
 CREATE_APP_VERSION="${FORGEPATH_CREATE_APP_VERSION:-0.8.3}"
 
 require() {
@@ -38,17 +37,16 @@ if [ ! -d "${BACKSTAGE_DIR}/packages" ]; then
   mkdir -p "$(dirname "${BACKSTAGE_DIR}")"
   APP_NAME="$(basename "${BACKSTAGE_DIR}")"
   pushd "$(dirname "${BACKSTAGE_DIR}")" >/dev/null
-  # create-app has no --name flag; it always prompts "Enter a name for the app".
-  # Feed the answer (matching the --path basename) on stdin so the scaffold runs
-  # non-interactively — without this it hangs on the prompt under `make` and
-  # fails outright in CI, where there's no TTY (SIGINT -> exit 130).
+  # create-app has no --name flag; it always prompts for the app name. Feed the
+  # answer (matching --path basename) on stdin so it runs non-interactively —
+  # else it hangs under `make` and fails in CI with no TTY (SIGINT -> exit 130).
   printf '%s\n' "${APP_NAME}" | \
     npx --yes "@backstage/create-app@${CREATE_APP_VERSION}" --path "${APP_NAME}" --skip-install
   popd >/dev/null
 
-  # Snapshot the pristine scaffold version of every file the overlay will
-  # overwrite. backstage-sync.sh diffs these against the committed baseline
-  # in overlay/upstream/ to detect upstream drift after a create-app bump.
+  # Snapshot the pristine scaffold version of every overlay-overwritten file.
+  # backstage-sync.sh diffs these against the committed baseline in
+  # overlay/upstream/ to detect upstream drift after a create-app bump.
   echo "==> snapshotting pristine scaffold files into .scaffold-pristine/"
   PRISTINE_DIR="${BACKSTAGE_DIR}/.scaffold-pristine"
   rm -rf "${PRISTINE_DIR}"

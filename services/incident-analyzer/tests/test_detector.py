@@ -108,8 +108,8 @@ def test_dedup_unknown_fingerprint_has_no_issue_url():
 
 
 def test_dedup_prunes_entries_older_than_twice_cooldown():
-    # A record() sweep drops fingerprints older than 2× the cooldown (plus their
-    # unheld lock), bounding memory in a long-lived pod.
+    # A record() sweep drops fingerprints older than 2× cooldown (plus their unheld
+    # lock), bounding memory in a long-lived pod.
     cache = DedupCache(cooldown_seconds=3600)
     cache.record("old-fp", issue_url=None)
     cache.lock_for("old-fp")  # materialize the paired lock (unheld)
@@ -126,8 +126,7 @@ def test_dedup_prunes_entries_older_than_twice_cooldown():
 
 
 def test_dedup_prune_keeps_held_lock():
-    # A held lock must survive the sweep even with a stale entry, else we'd reopen
-    # the TOCTOU.
+    # A held lock must survive the sweep even with a stale entry, else we reopen the TOCTOU.
     cache = DedupCache(cooldown_seconds=3600)
     cache.record("busy-fp", issue_url=None)
     cache._entries["busy-fp"]["last_filed"] -= 2 * 3600 + 1

@@ -118,11 +118,10 @@ jobs:
           scanners: secret
           format: sarif
           output: trivy-secrets.sarif
-      # Report-only: findings surface in the Security tab rather than hard-failing
-      # the build. The secret scan in particular would otherwise trip over the
-      # intentional secret-shaped *test fixtures* (e.g. tests/test_masking.py's
-      # AKIA…EXAMPLE / JWT / card). Triage there; add a .trivyignore + exit-code
-      # if you want to make it blocking.
+      # Report-only: findings surface in the Security tab instead of failing the
+      # build. The secret scan would otherwise trip over the intentional secret-
+      # shaped test fixtures (tests/test_masking.py). Add a .trivyignore + exit-code
+      # to make it blocking.
       - name: Upload misconfiguration SARIF
         if: github.event_name == 'push'   # security-events:write isn't granted on fork PRs
         uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e  # v4

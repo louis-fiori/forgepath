@@ -1,8 +1,8 @@
-// Command incident-generator is a chaos/incident-fixture service for ForgePath
-// that feeds realistic error material to the observability stack and AI
-// Incident Analyzer. It runs continuously (a background goroutine emits a mix
-// of healthy and error JSON logs) and on demand (HTTP endpoints trigger a
-// specific failure). Stdlib only, so the image stays tiny and builds offline.
+// Command incident-generator is a ForgePath chaos/incident-fixture service that
+// feeds error material to the observability stack and AI Incident Analyzer. A
+// background goroutine emits mixed healthy/error JSON logs; HTTP endpoints
+// trigger specific failures on demand. Stdlib only, so the image stays tiny and
+// builds offline.
 package main
 
 import (
@@ -34,9 +34,9 @@ type scenario struct {
 	message string
 	// fields are extra structured attributes an incident analyzer would correlate on.
 	fields map[string]any
-	// sensitive, when non-nil, builds the logged message with freshly-generated
-	// fake PII, modeling a code path that leaks customer data so the analyzer's
-	// masking is exercised. The HTTP response still uses the clean static message.
+	// sensitive, when non-nil, builds the logged message with fresh fake PII to
+	// model a data-leaking code path and exercise the analyzer's masking; the
+	// HTTP response still uses the clean static message.
 	sensitive func() string
 }
 
@@ -100,9 +100,9 @@ var catalogue = []scenario{
 	},
 
 	// --- PII-bearing scenarios -------------------------------------------
-	// These model code paths that accidentally log raw customer data. The
-	// sensitive hook regenerates fresh PII per emission to exercise the
-	// analyzer's masking; the static message (the HTTP response) stays PII-free.
+	// Model code paths that accidentally log raw customer data: the sensitive
+	// hook regenerates fresh PII per emission to exercise the analyzer's masking,
+	// while the static message (the HTTP response) stays PII-free.
 	{
 		typ:        "payment-declined-pii",
 		severity:   slog.LevelError,
@@ -173,9 +173,8 @@ var healthyMessages = []string{
 
 // ---- Fake PII generators ----
 //
-// Synthetic but realistically-shaped customer data for the PII-bearing
-// scenarios. Card numbers carry a valid Luhn digit so the analyzer's
-// Luhn-gated card rule fires on them.
+// Synthetic, realistically-shaped customer data for the PII-bearing scenarios.
+// Card numbers carry a valid Luhn digit so the analyzer's Luhn-gated card rule fires.
 
 func randDigits(n int) string {
 	b := make([]byte, n)
@@ -314,8 +313,7 @@ func emitScenario(logger *slog.Logger, m *metrics, s scenario, source string) {
 	for k, v := range s.fields {
 		attrs = append(attrs, k, v)
 	}
-	// PII scenarios build the logged message fresh each time; the static
-	// s.message is reserved for the clean HTTP response.
+	// PII scenarios build the logged message fresh; s.message stays the clean HTTP response.
 	msg := s.message
 	if s.sensitive != nil {
 		msg = s.sensitive()

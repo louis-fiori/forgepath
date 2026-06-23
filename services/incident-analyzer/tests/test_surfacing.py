@@ -1,6 +1,6 @@
-"""Coverage for the previously-untested surfacing + analysis paths: the Claude
-tool-block parsing in analyzer.analyze, backstage.notify, github_issue.open_issue,
-runbook.fetch's TTL cache, and the poller's run_loop iteration."""
+"""Coverage for the surfacing + analysis paths: Claude tool-block parsing in
+analyzer.analyze, backstage.notify, github_issue.open_issue, runbook.fetch's TTL
+cache, and the poller's run_loop iteration."""
 
 from __future__ import annotations
 

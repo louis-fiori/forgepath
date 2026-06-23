@@ -51,10 +51,8 @@ async def recent_error_samples(
     client: httpx.AsyncClient, namespace: str, window: str, limit: int = 200
 ) -> list[LogSample]:
     """Pull recent error lines and bucket them by error_type for the LLM context.
-
-    Uses query_range to get actual lines, then groups in Python (keeps the LogQL
-    portable across Loki versions).
-    """
+    Uses query_range for actual lines, then groups in Python (keeps the LogQL portable
+    across Loki versions)."""
     end = int(time.time() * 1e9)
     start = end - _range_seconds(window) * 1_000_000_000
     q = f'{{namespace="{namespace}"}} | json | severity=~"{_SEVERITY}"'
@@ -90,18 +88,12 @@ async def fetch_one_line(
 ) -> str | None:
     """Most recent error/fatal log line in `namespace` containing `filter_text`.
 
-    Decision: this Loki-search path is gated by the same `| json |
-    severity=~"error|fatal"` filter the poller uses (see `_SEVERITY`), so the
-    `query` mode of /analyze-log can only surface *incident* lines. The endpoint
-    is a search primitive — without the gate, a token-holding caller could fish
-    arbitrary non-error log content (`query=password`, `query=AKIA`, …) out of
-    namespaces they otherwise can't read and have it sent to the LLM + filed as a
-    GitHub issue. Masking is best-effort, so we narrow the searchable surface to
-    error lines rather than rely on redaction alone.
-
-    Operators who genuinely need to analyze a non-error line still can: the
-    `log_line` (paste) path takes arbitrary content verbatim — but there the
-    caller already holds the line, so it opens no new read/exfiltration path.
+    Gated by the same `| json | severity=~"error|fatal"` filter the poller uses (see
+    `_SEVERITY`), so /analyze-log's `query` mode can only surface error lines. This narrows
+    the searchable surface so the search path can't exfiltrate arbitrary log content
+    (`query=password`, `query=AKIA`, …) the caller can't otherwise read — masking is
+    best-effort, so we don't rely on redaction alone. The `log_line` (paste) path is exempt:
+    the caller already holds the line, so it opens no new read/exfiltration path.
     """
     end = int(time.time() * 1e9)
     start = end - _range_seconds(window) * 1_000_000_000
@@ -122,7 +114,7 @@ async def fetch_one_line(
 
 
 def parse_line(line: str) -> tuple[str, str | None, str | None]:
-    """Best-effort extraction of (error_type, component, msg) from a JSON log line.
+    """Best-effort (error_type, component, msg) from a JSON log line.
     `line` is the raw structured JSON the incident-generator emitted."""
     try:
         d = json.loads(line)

@@ -17,10 +17,10 @@ router = APIRouter()
 
 
 def _require_s2s_token(authorization: str | None = Header(default=None)) -> None:
-    """Gate the costly / side-effecting endpoints behind the shared s2s bearer
-    token (settings.auth_enabled): they trigger LLM calls ($) and open issues, and
-    ClusterIP doesn't limit access within the cluster. Open when no token is set
-    (local / poll-only dev); health, metrics and index stay ungated for probes."""
+    """Gate the costly / side-effecting endpoints behind the shared s2s bearer token
+    (settings.auth_enabled): they trigger LLM calls ($) and open issues, and ClusterIP
+    doesn't limit in-cluster access. Open when no token is set (local / poll-only dev);
+    health, metrics and index stay ungated for probes."""
     expected = settings.backstage_s2s_token
     if not expected:
         return
@@ -35,9 +35,9 @@ def _require_s2s_token(authorization: str | None = Header(default=None)) -> None
         )
 
 
-# DNS-1123 label. The namespace is interpolated into loki.py's LogQL selector,
-# so an unvalidated value could read other namespaces' logs. fullmatch (not $)
-# avoids the trailing-newline bypass.
+# DNS-1123 label. The namespace is interpolated into loki.py's LogQL selector, so an
+# unvalidated value could read other namespaces' logs. fullmatch (not $) avoids the
+# trailing-newline bypass.
 _NAMESPACE_RE = re.compile(r"[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?")
 
 

@@ -33,15 +33,11 @@ spec:
             - name: http
               containerPort: 9080
           securityContext:
-            # runAsUser: 0 is kept deliberately. Promtail tails the node's
-            # container logs via the hostPath mounts below (/var/log,
-            # /var/lib/docker/containers); those files are root-owned and not
-            # world-readable, so a non-root UID can't read them without extra
-            # node-level group plumbing (untested here). Running as uid 0 reads
-            # them by *ownership*, not capability — so dropping ALL capabilities
-            # below is still safe and removes the actual privilege surface.
-            # To move off root: verify node log readability for a chosen UID/GID
-            # first, then set runAsUser/runAsNonRoot accordingly.
+            # runAsUser: 0 is deliberate: promtail tails root-owned, non-world-
+            # readable node logs via the hostPath mounts below, and uid 0 reads
+            # them by ownership (not capability) — so dropping ALL caps stays
+            # safe. To move off root, verify node log readability for a chosen
+            # UID/GID first, then set runAsUser/runAsNonRoot.
             runAsUser: 0
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

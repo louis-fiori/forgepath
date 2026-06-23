@@ -1,12 +1,10 @@
 name: Backstage CI
 
-# The Backstage app at local/backstage/ is gitignored: it's regenerated every
-# run by `make backstage-init` (npx @backstage/create-app, version pinned in
-# .env.example) and then layered with the forgepath overlay under
-# platform/backstage/. Scaffold + full yarn install is heavy, so this lives in
-# its own workflow with a path filter rather than in ci.yml, whose jobs run on
-# every push/PR. The path lists for push and pull_request are kept identical by
-# hand.
+# local/backstage/ is gitignored and regenerated every run by `make backstage-init`
+# (npx @backstage/create-app, version pinned in .env.example), then layered with the
+# forgepath overlay. Scaffold + full yarn install is heavy, so it lives in its own
+# workflow with a path filter rather than ci.yml. The push/pull_request path lists
+# are kept identical by hand.
 on:
   push:
     branches: [main, dev]
@@ -46,17 +44,14 @@ jobs:
     # Scaffold + full Backstage install dominates the runtime; 25m is headroom.
     timeout-minutes: 25
     env:
-      # Force yarn 4 to use its global cache (~/.yarn/berry/cache) instead of a
-      # project-local one, so the cache step below — keyed on the scaffold
-      # inputs — actually persists downloads across runs. There's no committed
-      # lockfile to key on (local/backstage/ is gitignored), so we key on the
-      # create-app version (.env.example) plus the overlay's extra backend deps.
+      # Force yarn 4 to use its global cache so the cache step below persists
+      # downloads across runs. No committed lockfile to key on (local/backstage/
+      # is gitignored), so we key on the create-app version + overlay backend deps.
       YARN_ENABLE_GLOBAL_CACHE: "true"
-      # GitHub Actions sets CI=true, which makes Yarn 4 default to immutable
-      # installs. But backstage-init merges package-additions.json into the
-      # backend package.json *after* the scaffold, so `yarn install` must
-      # regenerate the lockfile (YN0028 otherwise). There's no committed
-      # lockfile to enforce here, so immutability is meaningless — disable it.
+      # CI=true makes Yarn 4 default to immutable installs, but backstage-init
+      # merges package-additions.json after the scaffold, so `yarn install` must
+      # regenerate the lockfile (YN0028 otherwise). No committed lockfile to
+      # enforce here, so disable it.
       YARN_ENABLE_IMMUTABLE_INSTALLS: "false"
       # Don't let Corepack block on a "about to download yarn 4.4.1" prompt.
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
@@ -85,9 +80,9 @@ jobs:
             backstage-${{ runner.os }}-
 
       # Scaffolds local/backstage/, applies the overlay, merges
-      # package-additions.json, and runs yarn install. _env.sh seeds .env from
-      # .env.example and supplies non-secret defaults (owner/repo/branch);
-      # GITHUB_TOKEN is only needed at runtime, so the checkup needs no secrets.
+      # package-additions.json, runs yarn install. _env.sh seeds .env from
+      # .env.example with non-secret defaults; GITHUB_TOKEN is only needed at
+      # runtime, so this needs no secrets.
       - name: Scaffold app + apply overlay (make backstage-init)
         run: make backstage-init
 

@@ -2,27 +2,22 @@
 
 .DEFAULT_GOAL := help
 
-# NOTE: we deliberately do NOT `include .env` here. make and bash have
-# different grammars, and `include` parses .env as a makefile, so a value with
-# spaces/quotes or an inline `#` would silently corrupt *every* target. The real
-# loader is scripts/_env.sh, sourced by every script these recipes call (it
-# reads .env, applies the same defaults below, and exports them). The defaults
-# here only cover make-level use (help text, command-line overrides like
-# `make local-up FORGEPATH_TARGET_BRANCH=mybranch`); .env never reaches make.
+# NOTE: deliberately NOT `include .env` here — `include` parses .env as a makefile,
+# so a value with spaces/quotes or an inline `#` would corrupt *every* target. The
+# real loader is scripts/_env.sh (sourced by every script these recipes call); the
+# defaults below only cover make-level use (help, CLI overrides), .env never reaches make.
 FORGEPATH_GITHUB_OWNER ?= louis-fiori
 FORGEPATH_GITHUB_REPO ?= forgepath
 FORGEPATH_TARGET_BRANCH ?= dev
 export FORGEPATH_GITHUB_OWNER FORGEPATH_GITHUB_REPO FORGEPATH_TARGET_BRANCH
 
-# All recipes pipe through bash (some use `. <file>` to source nvm and rely
-# on $HOME/$NVM_DIR). Default /bin/sh on Debian/Ubuntu is dash, which trips
-# on the brace-grouped one-liners below.
+# All recipes pipe through bash (some source nvm via `. <file>`). Default /bin/sh
+# on Debian/Ubuntu is dash, which trips on the brace-grouped one-liners below.
 SHELL := bash
 
-# Portable nvm loader: tries $NVM_DIR, then the common install locations on
-# Linux/WSL (~/.nvm), Apple Silicon (/opt/homebrew/opt/nvm) and Intel macOS
-# (/usr/local/opt/nvm). No-op if nvm isn't installed, recipes still work
-# as long as a Node 22+ `node`/`yarn` is already on PATH.
+# Portable nvm loader: tries $NVM_DIR, then common install locations (~/.nvm,
+# /opt/homebrew/opt/nvm, /usr/local/opt/nvm). No-op if nvm isn't installed —
+# recipes still work as long as a Node 22+ `node`/`yarn` is on PATH.
 define LOAD_NVM
 { \
   if [ -n "$$NVM_DIR" ] && [ -s "$$NVM_DIR/nvm.sh" ]; then . "$$NVM_DIR/nvm.sh"; \
@@ -131,10 +126,9 @@ _ensure-image: _ensure-scaffold
 	  $(MAKE) backstage-build; \
 	fi
 
-# Builds the incident-generator / incident-analyzer fixture images only if they
-# aren't already in the local Docker cache (mirrors _ensure-image). local-up.sh
-# then side-loads them into kind *before* ArgoCD deploys, so the pods start
-# green instead of ErrImagePull. Rebuild explicitly with the *-load targets.
+# Builds the fixture images only if they aren't already in the local Docker cache
+# (mirrors _ensure-image). local-up.sh side-loads them into kind *before* ArgoCD
+# deploys, so pods start green instead of ErrImagePull. Rebuild with the *-load targets.
 _ensure-workload-images:
 	@if ! docker image inspect incident-generator:dev >/dev/null 2>&1; then \
 	  echo "==> incident-generator:dev not found, building"; \

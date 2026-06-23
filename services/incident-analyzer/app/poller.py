@@ -85,20 +85,19 @@ async def run_cycle(
     if candidate is None:
         return AnalyzeResult(detected=False, note=f"no incident (errors={count})")
 
-    # Scrub PII before the candidate leaves the service (returned verbatim and
-    # surfaced to GitHub / Backstage).
+    # Scrub PII before the candidate leaves the service (returned verbatim, surfaced to
+    # GitHub / Backstage).
     if settings.masking_enabled:
         redact_candidate(candidate)
 
     metrics.inc("incidentanalyzer_incidents_detected_total")
     fp = candidate.fingerprint()
 
-    # Steps 3-5 run under a per-fingerprint lock so concurrent cycles for the
-    # same incident (the poller racing an on-demand /analyze, or two /analyze
-    # calls) can't both pass the dedup check and file duplicate issues. The
-    # should_escalate→analyze(await)→record window was a TOCTOU; the lock makes
-    # the check-analyze-record sequence atomic per fingerprint while different
-    # fingerprints still run concurrently.
+    # Steps 3-5 run under a per-fingerprint lock so concurrent cycles for the same incident
+    # (poller racing an on-demand /analyze, or two /analyze calls) can't both pass the dedup
+    # check and file duplicate issues. The should_escalate→analyze(await)→record window was a
+    # TOCTOU; the lock makes that sequence atomic per fingerprint, different ones still run
+    # concurrently.
     async with cache.lock_for(fp):
         # 3. Dedup.
         if not cache.should_escalate(fp, force=force):
@@ -117,8 +116,8 @@ async def run_cycle(
             diagnosis = await analyze(candidate, rb, llm)
             metrics.inc("incidentanalyzer_claude_calls_total")
         except Exception as e:  # noqa: BLE001
-            # No record() on failure, so a later cycle is free to retry (the lock
-            # is released here, not held for the cooldown).
+            # No record() on failure, so a later cycle can retry (lock released here, not
+            # held for the cooldown).
             metrics.inc("incidentanalyzer_errors_total", 'stage="analyze"')
             log.exception("analysis failed for %s", namespace)
             return AnalyzeResult(detected=True, fingerprint=fp, candidate=candidate,

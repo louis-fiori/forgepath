@@ -34,9 +34,9 @@ async def _instant(client: httpx.AsyncClient, expr: str) -> float | None:
 
 
 async def snapshot(client: httpx.AsyncClient) -> dict[str, float]:
-    # Fire the instant queries concurrently: they're independent, and run serially
-    # the per-query 10s timeouts could stack to ~30s and stall the poll cycle.
-    # _instant swallows its own errors (returns None), so gather never raises.
+    # Fire the instant queries concurrently: they're independent, and serially the per-query
+    # 10s timeouts could stack to ~30s and stall the poll cycle. _instant swallows its own
+    # errors (returns None), so gather never raises.
     names = list(_QUERIES)
     values = await asyncio.gather(*(_instant(client, _QUERIES[n]) for n in names))
     return {n: v for n, v in zip(names, values, strict=True) if v is not None}

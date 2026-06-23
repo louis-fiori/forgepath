@@ -52,11 +52,10 @@ class IncidentCandidate(BaseModel):
 class Diagnosis(BaseModel):
     """Structured output produced by Claude (the record_diagnosis tool schema).
 
-    The fields are validated, not trusted: the values are surfaced verbatim to
-    GitHub / Backstage (severity becomes an issue label, confidence is rendered
-    as a percentage), so a model that returns `confidence=5.0` or a free-form
-    severity must fail closed (ValidationError → caught in poller as an analysis
-    failure) rather than produce a "500%" label or an arbitrary GitHub label."""
+    Validated, not trusted: values are surfaced verbatim to GitHub / Backstage (severity
+    becomes an issue label, confidence a percentage), so `confidence=5.0` or a free-form
+    severity must fail closed (ValidationError → caught in poller as an analysis failure)
+    rather than produce a "500%" label or an arbitrary GitHub label."""
 
     summary: str
     severity: Literal["low", "medium", "high", "critical"]

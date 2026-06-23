@@ -50,10 +50,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     analyzer_model: str = "claude-sonnet-4-6"
 
-    # Amazon Bedrock path. Model IDs carry the `anthropic.` prefix, often a
-    # region-scoped inference profile. Two auth modes, access key first: (1) static
-    # AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY (+ AWS_SESSION_TOKEN for STS), no
-    # ~/.aws needed; (2) AWS_PROFILE from a mounted ~/.aws. Access key wins.
+    # Amazon Bedrock path. Model IDs carry the `anthropic.` prefix, often a region-scoped
+    # inference profile. Two auth modes, access key first: (1) static AWS_ACCESS_KEY_ID +
+    # AWS_SECRET_ACCESS_KEY (+ AWS_SESSION_TOKEN for STS), no ~/.aws needed; (2) AWS_PROFILE
+    # from a mounted ~/.aws.
     bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"
     aws_region: str = "us-east-1"
     aws_profile: str = "default"
@@ -105,10 +105,10 @@ class Settings(BaseSettings):
 
     @cached_property
     def llm_enabled(self) -> bool:
-        # cached_property, not property: the poller reads this every cycle and the
-        # bedrock branch hits the disk (os.path.exists). The inputs (env vars,
-        # mounted creds) are fixed for the pod's lifetime, so resolve once. Tests
-        # override the whole attribute, so the cache never masks a fixture change.
+        # cached_property, not property: the poller reads this every cycle and the bedrock
+        # branch hits the disk (os.path.exists), but inputs (env vars, mounted creds) are
+        # fixed for the pod's lifetime, so resolve once. Tests override the whole attribute,
+        # so the cache never masks a fixture change.
         if self.llm_provider == "bedrock":
             # Static access key, else a resolvable profile (mounted or ~/.aws).
             if (self.aws_access_key_id and self.aws_secret_access_key) or os.environ.get("AWS_ACCESS_KEY_ID"):

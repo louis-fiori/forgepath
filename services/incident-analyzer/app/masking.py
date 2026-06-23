@@ -1,10 +1,9 @@
 """Best-effort redaction of sensitive data before it leaves the cluster for the LLM.
 
-`redact()` scrubs well-known shapes (cards, IBANs, emails, tokens, IPs) with
-conservative regexes, replacing each with a typed placeholder so the model keeps
-the structure without the secret. Patterns run most-specific-first so a JWT or
-email is consumed before the generic IP / digit rules fire on its substrings.
-It reduces exposure but does not guarantee zero leakage.
+`redact()` scrubs well-known shapes (cards, IBANs, emails, tokens, IPs) with conservative
+regexes, each replaced by a typed placeholder so the model keeps the structure without the
+secret. Patterns run most-specific-first so a JWT or email is consumed before the generic
+IP / digit rules fire on its substrings. Reduces exposure but does not guarantee zero leakage.
 """
 
 from __future__ import annotations
@@ -13,8 +12,8 @@ import re
 
 
 def _luhn_ok(digits: str) -> bool:
-    """Luhn checksum, keeps the card rule from eating arbitrary long digit runs
-    (order IDs, counters) that happen to be card-length."""
+    """Luhn checksum; keeps the card rule from eating long digit runs (order IDs,
+    counters) that happen to be card-length."""
     total, alt = 0, False
     for ch in reversed(digits):
         d = ord(ch) - 48
@@ -38,8 +37,8 @@ def _redact_card(m: re.Match) -> str:
 # (compiled pattern, replacement), order matters; most specific first.
 # Replacement may be a string or a callable, matching re.sub's contract.
 _RULES: list[tuple[re.Pattern, object]] = [
-    # PEM private-key blocks, matched whole (across lines) so the body is redacted
-    # as a unit. First, as the most specific shape.
+    # PEM private-key blocks, matched whole (across lines) so the body is redacted as a
+    # unit. First, as the most specific shape.
     (
         re.compile(
             r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----.*?-----END [A-Z0-9 ]*PRIVATE KEY-----",
@@ -64,11 +63,10 @@ _RULES: list[tuple[re.Pattern, object]] = [
     # "password":"x" is caught too). Three points:
     #   - Anchor the key with a non-word lookbehind + lazy prefix, not `\b`, so
     #     underscore-joined keys fire (db_password, aws_secret_access_key).
-    #   - A bounded suffix (digits + a small qualifier list: _v2/_old/_base) catches
-    #     password2 / client_secret_v2 without re-firing on authenticated=/authority:.
-    #   - The value takes a quoted span to its closing quote before a bare token
-    #     (so "p@ss w0rd" keeps its tail), with an open-quote-to-EOL fallback for
-    #     truncated lines.
+    #   - A bounded suffix (digits + qualifiers _v2/_old/_base) catches password2 /
+    #     client_secret_v2 without re-firing on authenticated=/authority:.
+    #   - The value takes a quoted span to its closing quote before a bare token (so
+    #     "p@ss w0rd" keeps its tail), with an open-quote-to-EOL fallback for truncated lines.
     (
         re.compile(
             r"(?i)[\"']?(?<![A-Za-z0-9_])"
@@ -80,11 +78,11 @@ _RULES: list[tuple[re.Pattern, object]] = [
         ),
         r"\1=[REDACTED]",
     ),
-    # IPv4. The digit/dot boundaries stop it grabbing a 4-group fragment of a
-    # longer dotted run (version strings, dotted phones); that run is left to a later rule.
+    # IPv4. The digit/dot boundaries stop it grabbing a 4-group fragment of a longer dotted
+    # run (version strings, dotted phones); that run is left to a later rule.
     (re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])"), "[REDACTED_IP]"),
-    # IPv6, full or `::`-compressed. The start boundary forbids matching inside an
-    # identifier, so `std::vector` scope operators and `HH:MM:SS` timestamps are left alone.
+    # IPv6, full or `::`-compressed. The start boundary forbids matching inside an identifier,
+    # so `std::vector` scope operators and `HH:MM:SS` timestamps are left alone.
     (
         re.compile(
             r"""(?<![\w.:])(?:
@@ -127,11 +125,10 @@ def redact(text: str) -> str:
 
 
 def redact_candidate(candidate) -> None:
-    """Scrub PII from a candidate's free-text fields in place (log samples, pod
-    events). The candidate is returned verbatim in /analyze and surfaced to
-    GitHub / Backstage, so it needs the same scrub the LLM context already gets.
-    Structured slugs are left untouched. redact() is idempotent, so re-masking in
-    _incident_context afterwards is a safe no-op."""
+    """Scrub PII in place from a candidate's free-text fields (log samples, pod events).
+    The candidate is returned verbatim in /analyze and surfaced to GitHub / Backstage, so it
+    needs the same scrub the LLM context gets; structured slugs are left untouched. redact()
+    is idempotent, so re-masking in _incident_context afterwards is a safe no-op."""
     for s in candidate.log_samples:
         s.samples = [redact(m) for m in s.samples]
     for p in candidate.pod_signals:

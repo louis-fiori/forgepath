@@ -21,11 +21,9 @@ if [ ! -d "${BACKSTAGE_DIR}/packages" ]; then
   exit 1
 fi
 
-# 0. Drift check. backstage-init.sh snapshots the scaffold's pristine version
-# of every overlay-managed file into .scaffold-pristine/; overlay/upstream/ is
-# the committed baseline the overlay was authored against. A mismatch means
-# the scaffold generation moved, the overlay copies below may be silently
-# missing upstream changes.
+# 0. Drift check. .scaffold-pristine/ (from backstage-init.sh) vs overlay/upstream/
+# (committed baseline). A mismatch means the scaffold generation moved, so the
+# overlay copies below may be silently missing upstream changes.
 PRISTINE_DIR="${BACKSTAGE_DIR}/.scaffold-pristine"
 UPSTREAM_DIR="${OVERLAY_DIR}/upstream"
 if [ -d "${PRISTINE_DIR}" ]; then
@@ -76,10 +74,9 @@ rm -rf "${BACKSTAGE_DIR}/examples/templates"
 mkdir -p "${BACKSTAGE_DIR}/examples/templates"
 cp -R "${PLATFORM_TEMPLATES_DIR}/." "${BACKSTAGE_DIR}/examples/templates/"
 
-# Render ${FORGEPATH_*} placeholders in each scaffolder template.yaml so
-# the synced copy carries the current fork's owner/repo/branch. Nunjucks
-# `${{ ... }}` (double-brace) is untouched, forgepath_render only matches
-# the single-brace `${VAR}` form.
+# Render ${FORGEPATH_*} placeholders in each scaffolder template.yaml so the
+# synced copy carries the fork's owner/repo/branch. forgepath_render matches only
+# single-brace `${VAR}`, leaving Nunjucks `${{ ... }}` untouched.
 echo "==> rendering FORGEPATH_* placeholders in scaffolder templates"
 echo "    OWNER=${FORGEPATH_GITHUB_OWNER}  REPO=${FORGEPATH_GITHUB_REPO}  BRANCH=${FORGEPATH_TARGET_BRANCH}"
 find "${BACKSTAGE_DIR}/examples/templates" -type f -name template.yaml | \
@@ -89,9 +86,8 @@ find "${BACKSTAGE_DIR}/examples/templates" -type f -name template.yaml | \
     mv "${tmp}" "${f}"
   done
 
-# 3. Inject the TechDocs source tree (mkdocs.yml + docs/*.md). The
-# forgepath-platform Component catalog entry references this via
-# `backstage.io/techdocs-ref: dir:../docs`.
+# 3. Inject the TechDocs source tree (mkdocs.yml + docs/*.md). Referenced by the
+# forgepath-platform Component via `backstage.io/techdocs-ref: dir:../docs`.
 echo "==> syncing platform docs from platform/docs/"
 rm -rf "${BACKSTAGE_DIR}/examples/docs"
 mkdir -p "${BACKSTAGE_DIR}/examples/docs"
