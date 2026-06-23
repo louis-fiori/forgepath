@@ -153,4 +153,4 @@ to a "merge to main = prod" experience:
   remote cluster, target it from the prod ApplicationSet. Closer to the
   real shape; doubles local resource usage.
 
-See `gitops/apps/previews-appset.yaml` for the pattern to copy.
+See `platform/argocd/bootstrap/previews-appset.yaml` for the pattern to copy.

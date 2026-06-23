@@ -51,7 +51,7 @@ Full walkthrough, including prerequisites and platform-specific notes, in [docs/
 | Component            | Role                                                 | Where it lives                      |
 |----------------------|------------------------------------------------------|-------------------------------------|
 | **Backstage**        | Developer portal, catalog, scaffolder, Kubernetes UI | `platform/backstage/`               |
-| **ArgoCD**          | GitOps engine, syncs `gitops/` to the cluster        | `platform/argocd/`, `gitops/apps/`  |
+| **ArgoCD**          | GitOps engine, syncs `gitops/` to the cluster        | `platform/argocd/`, `gitops/platform/`  |
 | **Prometheus**       | Pod metrics via kubelet/cAdvisor + annotation-based scraping | `gitops/platform/prometheus/`       |
 | **Loki + Promtail**  | Cluster-wide log ingestion (every pod, no wiring)    | `gitops/platform/loki/`             |
 | **Grafana**          | Dashboards + datasources, auto-provisioned           | `gitops/platform/grafana/`          |

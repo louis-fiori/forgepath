@@ -12,7 +12,7 @@ flowchart TD
 
     subgraph cluster["kind cluster"]
         Backstage["Backstage<br/>(portal · scaffolder)"]
-        Argo["ArgoCD<br/>root app-of-apps + ApplicationSet"]
+        Argo["ArgoCD<br/>bootstrap ApplicationSets"]
         Previews["preview-scaffold-*<br/>(one namespace per labeled PR)"]
         Obs["Prometheus · Loki · Promtail"]
         Grafana["Grafana<br/>dashboards"]
@@ -41,12 +41,11 @@ flowchart TD
 forgepath/
 ├── platform/                # Sources (human-edited)
 │   ├── argocd/install/      # Kustomize base for the ArgoCD install
-│   ├── argocd/bootstrap/    # Cluster-level resources (root-app)
+│   ├── argocd/bootstrap/    # platform + previews ApplicationSets (rendered & applied by local-up.sh)
 │   ├── backstage/           # Catalog, scaffolder templates, overlay
 │   └── docs/                # TechDocs source served inside Backstage
 │
 ├── gitops/                  # The source of truth ArgoCD watches
-│   ├── apps/                # ArgoCD Applications + previews ApplicationSet
 │   ├── platform/            # Platform component manifests (prom/loki/grafana/backstage/incident-*)
 │   └── workloads/           # Preview workloads (populated by PRs)
 │
@@ -79,8 +78,8 @@ forgepath/
 
 ## GitOps flow
 
-1. **Boot**: `make local-up` applies `platform/argocd/install` (the ArgoCD bundle) and then the **root app-of-apps** (`platform/argocd/bootstrap/root-app.yaml`), which points at `gitops/apps/` with `recurse: true`.
-2. **Discovery**: ArgoCD discovers `backstage.yaml`, `grafana.yaml`, `loki.yaml`, `prometheus.yaml`, `incident-generator.yaml`, `incident-analyzer.yaml`, and the `previews` ApplicationSet under `gitops/apps/`. Each is an Application targeting a Kustomize base under `gitops/platform/<component>/`.
+1. **Boot**: `make local-up` applies `platform/argocd/install` (the ArgoCD bundle) and then renders + applies every manifest under `platform/argocd/bootstrap/` — the `platform` and `previews` **ApplicationSets**. Rendering resolves the `${FORGEPATH_*}` placeholders from `.env`, so a fork is driven entirely by `.env` (no in-place rebrand step).
+2. **Discovery**: the `platform` ApplicationSet fans out over a list of components (`backstage`, `grafana`, `loki`, `prometheus`, `incident-generator`, `incident-analyzer`), generating one Application each, targeting the Kustomize base under `gitops/platform/<component>/`.
 3. **Reconciliation**: ArgoCD pulls those manifests from Git and applies them server-side. Image tags, dashboards, retention, everything that changes the platform shape goes through a commit.
 4. **Previews**: the `previews` ApplicationSet uses the `pullRequest` generator. Any PR carrying the `preview` label spawns an `preview-scaffold-<name>` Application that deploys the PR branch's `gitops/workloads/<name>/k8s/*.yaml` into the namespace of the same name.
 5. **Cleanup**: closing the PR removes the PR from the generator's output → the Application disappears → `resources-finalizer.argocd.argoproj.io` deletes the namespace and everything inside.

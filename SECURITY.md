@@ -15,7 +15,7 @@ Broader (non-security) production shortcuts: the
 
 - The codebase on the default branch (`main`) and the active development branch (`dev`).
 - The two first-party services: `incident-generator` (Go) and `incident-analyzer` (Python/FastAPI).
-- The platform glue: the ArgoCD app-of-apps, the Backstage overlay + custom
+- The platform glue: the ArgoCD bootstrap ApplicationSets, the Backstage overlay + custom
   scaffolder actions, the GitOps manifests under `gitops/`, and the bootstrap
   scripts under `scripts/`.
 

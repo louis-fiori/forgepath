@@ -1,4 +1,4 @@
-.PHONY: help local-up local-down docker-up docker-down argocd-pw grafana-pw backstage-init backstage-sync backstage-install backstage-baseline backstage-build backstage-reload backstage-reload-docker configure incident incident-generator-build incident-generator-load incident-analyzer-build incident-analyzer-load incident-analyzer-secrets _ensure-workload-images
+.PHONY: help local-up local-down docker-up docker-down argocd-pw grafana-pw backstage-init backstage-sync backstage-install backstage-baseline backstage-build backstage-reload backstage-reload-docker incident incident-generator-build incident-generator-load incident-analyzer-build incident-analyzer-load incident-analyzer-secrets _ensure-workload-images
 
 .DEFAULT_GOAL := help
 
@@ -8,7 +8,7 @@
 # loader is scripts/_env.sh, sourced by every script these recipes call (it
 # reads .env, applies the same defaults below, and exports them). The defaults
 # here only cover make-level use (help text, command-line overrides like
-# `make configure FORGEPATH_GITHUB_OWNER=alice`); .env never reaches make.
+# `make local-up FORGEPATH_TARGET_BRANCH=mybranch`); .env never reaches make.
 FORGEPATH_GITHUB_OWNER ?= louis-fiori
 FORGEPATH_GITHUB_REPO ?= forgepath
 FORGEPATH_TARGET_BRANCH ?= dev
@@ -38,11 +38,6 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage: make \033[36m<target>\033[0m\n\nTargets:\n"} \
 	  /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } \
 	  /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
-
-##@ Configuration
-
-configure: ## Rebrand gitops/apps/*.yaml from .env (idempotent)
-	./scripts/configure.sh
 
 ##@ Cluster lifecycle
 

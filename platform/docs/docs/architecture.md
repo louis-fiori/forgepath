@@ -6,14 +6,13 @@
 forgepath/
 ├── platform/                # Sources (human-edited)
 │   ├── argocd/install/      # Kustomize base for the ArgoCD install
-│   ├── argocd/bootstrap/    # root-app.yaml (app-of-apps); secrets are
-│   │                        # generated at boot by scripts/local-up.sh,
-│   │                        # never stored here
+│   ├── argocd/bootstrap/    # platform + previews ApplicationSets, rendered &
+│   │                        # applied at boot by scripts/local-up.sh; secrets
+│   │                        # are generated there too, never stored here
 │   ├── backstage/           # Catalog, scaffolder templates, overlay
 │   └── docs/                # This site
 │
 ├── gitops/                  # The source of truth ArgoCD watches
-│   ├── apps/                # ArgoCD Applications + ApplicationSet
 │   ├── platform/            # Platform manifests (prom/loki/grafana/backstage/incident-*)
 │   └── workloads/           # Preview workloads (populated by PRs)
 │

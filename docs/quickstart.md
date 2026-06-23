@@ -33,7 +33,7 @@ Open `.env` and fill `GITHUB_TOKEN` with a **fine-grained PAT scoped to your for
 - **Issues**: Read and write, the incident-analyzer files incident issues
 - **Metadata**: Read, mandatory, auto-added
 
-If you forked the repo, also update `FORGEPATH_GITHUB_OWNER` / `FORGEPATH_GITHUB_REPO` / `FORGEPATH_TARGET_BRANCH`, then run `make configure` once. This rewrites the `repoURL` in the `gitops/apps/` Application manifests to point at your fork, those files are reconciled straight from Git by ArgoCD and can't honor runtime substitution.
+If you forked the repo, also update `FORGEPATH_GITHUB_OWNER` / `FORGEPATH_GITHUB_REPO` / `FORGEPATH_TARGET_BRANCH`. That's all, `make local-up` renders these into the ArgoCD bootstrap ApplicationSets at apply time, so there's nothing to rebrand or commit.
 
 ## 2. Scaffold and build Backstage
 
@@ -57,7 +57,7 @@ This:
 3. Installs ArgoCD via server-side apply
 4. Generates a random Grafana admin password (read it back with `make grafana-pw`)
 5. Creates the GitHub PAT secrets in the `backstage` and `argocd` namespaces from `$GITHUB_TOKEN`, plus the `incident-analyzer` secrets (LLM creds, S2S token), and mounts your `~/.aws` for the Bedrock path if present
-6. Applies the root app-of-apps, from there ArgoCD discovers and deploys Backstage, Prometheus, Loki, Grafana, and the incident-generator / incident-analyzer services
+6. Renders and applies the bootstrap ApplicationSets (`platform` + `previews`), from there ArgoCD discovers and deploys Backstage, Prometheus, Loki, Grafana, and the incident-generator / incident-analyzer services
 
 It takes ~3 min for everything to settle. Watch the live state at <http://localhost:8080/applications>.
 

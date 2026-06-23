@@ -247,33 +247,16 @@ stringData:
   password: ${GITHUB_TOKEN}
 EOF
 
-# Guard against the fork foot-gun: the child Application manifests under
-# gitops/apps/ are reconciled straight from git by ArgoCD, which can't honor
-# ${...} substitution, so their repoURL/branch are baked in by `make configure`
-# (sed) rather than envsubst like the root-app below. If .env points at a fork
-# but those files still reference a different owner/repo/branch, the root-app on
-# your fork would deploy child manifests from the *other* repo. Catch it here.
-_apps_sample="${REPO_ROOT}/gitops/apps/backstage.yaml"
-if [ -f "${_apps_sample}" ]; then
-  _committed_url="$(awk '/^[[:space:]]*repoURL:/ {print $2; exit}' "${_apps_sample}")"
-  _committed_owner="$(printf '%s\n' "${_committed_url}" | sed -E 's|^https://github.com/([^/]+)/.*$|\1|')"
-  _committed_repo="$(printf '%s\n' "${_committed_url}" | sed -E 's|^https://github.com/[^/]+/([^.]+)\.git$|\1|')"
-  _committed_branch="$(awk '/^[[:space:]]*targetRevision:/ {print $2; exit}' "${_apps_sample}")"
-  if [ "${_committed_owner}/${_committed_repo}@${_committed_branch}" \
-       != "${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}@${FORGEPATH_TARGET_BRANCH}" ]; then
-    echo "ERROR: gitops/apps/ still targets ${_committed_owner}/${_committed_repo}@${_committed_branch}," >&2
-    echo "  but .env resolves to ${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}@${FORGEPATH_TARGET_BRANCH}." >&2
-    echo "  ArgoCD reads those child apps straight from git, so the root app on your fork" >&2
-    echo "  would pull manifests from ${_committed_owner}/${_committed_repo} instead of yours." >&2
-    echo "  Fix: run \`make configure\`, then commit and push gitops/apps/ to your fork, then re-run." >&2
-    exit 1
-  fi
-fi
-
-echo "==> applying ArgoCD root app-of-apps"
+echo "==> applying ArgoCD bootstrap ApplicationSets"
 echo "    (resolving FORGEPATH_* placeholders: ${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}@${FORGEPATH_TARGET_BRANCH})"
-forgepath_render "${REPO_ROOT}/platform/argocd/bootstrap/root-app.yaml" | \
-  kubectl --context "${KCTX}" apply -f -
+# Each bootstrap manifest carries ${FORGEPATH_*} placeholders that we render
+# here and apply directly — ArgoCD never reads them from git, so envsubst is
+# honored and a fork needs nothing beyond .env (no `make configure`, no commit).
+# The Applications these ApplicationSets generate live in-cluster with the
+# rendered values; only the workload manifests under gitops/ are pulled from git.
+for _manifest in "${REPO_ROOT}"/platform/argocd/bootstrap/*.yaml; do
+  forgepath_render "${_manifest}" | kubectl --context "${KCTX}" apply -f -
+done
 
 echo "==> waiting for Backstage rollout (up to 5 min, deployed by ArgoCD)"
 kubectl --context "${KCTX}" -n backstage rollout status deploy/backstage --timeout=300s || \

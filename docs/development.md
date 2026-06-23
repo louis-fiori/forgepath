@@ -27,12 +27,6 @@ How to work in the repo: make targets, common customizations, fork setup.
 | `make backstage-reload`     | Rebuild + `kind load` + `rollout restart deploy/backstage`                    |
 | `make backstage-reload-docker` | Same, but on the docker-desktop context                                     |
 
-### Configuration
-
-| Target            | What it does                                                                    |
-|-------------------|---------------------------------------------------------------------------------|
-| `make configure`  | Rewrite `gitops/apps/*.yaml` with the `FORGEPATH_*` values from `.env`. Run once after editing `.env` for a fork. |
-
 ### Credentials
 
 | Target            | What it does                                                            |
@@ -103,11 +97,9 @@ After editing `.env`, run `make incident-analyzer-secrets` to re-sync the Secret
    - `FORGEPATH_GITHUB_OWNER` → your GitHub login
    - `FORGEPATH_GITHUB_REPO`  → your fork's name
    - `FORGEPATH_TARGET_BRANCH` → the branch ArgoCD tracks (default `dev`)
-3. Run `make configure`, this rewrites `gitops/apps/*.yaml` to point at your fork
-4. Commit + push the rebrand
-5. `make local-up`
+3. `make local-up`
 
-Backstage and ArgoCD's other consumers (`platform/argocd/bootstrap/root-app.yaml`, scaffolder `template.yaml`) keep `${FORGEPATH_*}` placeholders in Git and resolve them at runtime from `.env`, no rewrite needed there.
+Everything that needs your fork's owner/repo/branch (`platform/argocd/bootstrap/*.yaml` ApplicationSets, scaffolder `template.yaml`) keeps `${FORGEPATH_*}` placeholders in Git and resolves them at runtime from `.env`. There's no rewrite-and-commit step.
 
 ## Troubleshooting
 

@@ -9,14 +9,15 @@ spec:
     preserveResourcesOnDeletion: false
 
   generators:
-    # owner/repo (and the template repoURL below) are baked in by `make configure`
-    # (sed), NOT ${...} envsubst: ArgoCD reconciles this straight from git. On a
-    # fork, run `make configure`, then commit + push. targetRevision stays
-    # '{{branch}}' (an AppSet template var configure.sh deliberately won't touch).
+    # owner/repo and the template repoURL/targetRevision below are ${FORGEPATH_*}
+    # placeholders rendered by scripts/local-up.sh before apply (the bootstrap
+    # kubectl-applies this file directly; ArgoCD never reads it from git, so
+    # envsubst works). '{{branch}}' is an AppSet template var the pullRequest
+    # generator fills per PR — left as-is, not a placeholder.
     - pullRequest:
         github:
-          owner: louis-fiori
-          repo: forgepath
+          owner: ${FORGEPATH_GITHUB_OWNER}
+          repo: ${FORGEPATH_GITHUB_REPO}
           labels:
             - preview
           tokenRef:
@@ -32,7 +33,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/louis-fiori/forgepath.git
+        repoURL: https://github.com/${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}.git
         targetRevision: '{{branch}}'
         path: gitops/workloads
         directory:
