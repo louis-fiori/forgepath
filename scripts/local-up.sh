@@ -9,7 +9,7 @@ RUNTIME="${1:-kind}"
 CLUSTER_NAME="forgepath"
 
 require() {
-  command -v "$1" >/dev/null || { echo "missing dependency: $1" >&2; exit 1; }
+  command -v "$1" >/dev/null || { echo "missing dependency: $1 (run: make deps)" >&2; exit 1; }
 }
 require kubectl
 require docker

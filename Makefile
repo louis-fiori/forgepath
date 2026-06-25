@@ -1,4 +1,4 @@
-.PHONY: help local-up local-down docker-up docker-down argocd-pw grafana-pw backstage-init backstage-sync backstage-install backstage-baseline backstage-build backstage-reload backstage-reload-docker incident incident-generator-build incident-generator-load incident-analyzer-build incident-analyzer-load incident-analyzer-secrets _ensure-workload-images
+.PHONY: help deps doctor local-up local-down docker-up docker-down argocd-pw grafana-pw backstage-init backstage-sync backstage-install backstage-baseline backstage-build backstage-reload backstage-reload-docker incident incident-generator-build incident-generator-load incident-analyzer-build incident-analyzer-load incident-analyzer-secrets _ensure-workload-images
 
 .DEFAULT_GOAL := help
 
@@ -33,6 +33,14 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage: make \033[36m<target>\033[0m\n\nTargets:\n"} \
 	  /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } \
 	  /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+
+##@ Setup
+
+deps: ## Install all prerequisites (Docker, kind, kubectl, Node 22, Yarn, openssl)
+	./scripts/install-deps.sh
+
+doctor: ## Check that all prerequisites are present and at a supported version
+	@./scripts/preflight.sh
 
 ##@ Cluster lifecycle
 

@@ -27,10 +27,13 @@ ForgePath shows how a small platform team can give application developers a clea
 git clone https://github.com/louis-fiori/forgepath.git && cd forgepath
 cp .env.example .env  # fill in GITHUB_TOKEN (fine-grained PAT, see .env.example)
 
+make deps             # install prerequisites (Docker, kind, kubectl, Node 22, Yarn) — or `make doctor` to just check
 make backstage-init   # scaffolds local/backstage/ (~5 min, one-time)
 make backstage-build  # builds the Backstage Docker image (~5 min, one-time)
 make local-up         # creates the kind cluster + applies the platform
 ```
+
+> Works on macOS, Linux, and Windows via WSL2. `make deps` auto-detects your package manager (Homebrew / apt / dnf / pacman / zypper); `make doctor` reports what's missing without installing anything.
 
 After `make local-up`:
 
@@ -43,6 +46,59 @@ After `make local-up`:
 | incident-generator | http://localhost:8889  | n/a (`make incident TYPE=panic` to trigger one) |
 
 Full walkthrough, including prerequisites and platform-specific notes, in [docs/quickstart.md](docs/quickstart.md).
+
+---
+
+## 💻 Platform support & prerequisites
+
+ForgePath runs on **macOS**, **Linux**, and **Windows (via WSL2)**. The whole flow is `make` + bash scripts, so `make deps` installs the prerequisites for you and `make doctor` just checks them, on every platform.
+
+### Prerequisites
+
+| Tool     | Min version | Why it's needed                         |
+|----------|-------------|-----------------------------------------|
+| Docker   | recent      | Runs the kind node and builds the images |
+| kind     | 0.20+       | Local single-node Kubernetes cluster     |
+| kubectl  | 1.28+       | Talks to the cluster                     |
+| Node     | 22+         | Builds the Backstage app (via nvm)       |
+| Yarn     | 1.x+        | Backstage scaffolder and build           |
+| GNU make | 3.81+       | Task runner for every entrypoint         |
+| openssl  | recent      | Generates the Grafana admin password     |
+
+You don't need to install these by hand:
+
+```bash
+make doctor   # report what's installed / missing / outdated (changes nothing)
+make deps     # install the gaps via the detected package manager (idempotent)
+```
+
+`make deps` auto-detects your package manager (**Homebrew**, **apt**, **dnf/yum**, **pacman**, **zypper**), installs Node through [nvm](https://github.com/nvm-sh/nvm), and fetches `kind`/`kubectl` as pinned binaries where no package exists. Then pick your OS below and run the [Quickstart](#-quickstart) commands.
+
+### 🍎 macOS (Apple Silicon + Intel)
+
+Needs [Homebrew](https://brew.sh) and [Docker Desktop](https://www.docker.com/products/docker-desktop/). `make deps` pulls kind, kubectl, Node (nvm), Yarn, openssl, and the Docker Desktop cask via Homebrew. **Launch Docker Desktop once** so the engine is running, then run the Quickstart.
+
+### 🐧 Linux
+
+Debian/Ubuntu (apt), Fedora/RHEL (dnf/yum), Arch (pacman), and openSUSE (zypper) are all detected. In addition to the CLIs, `make deps` installs the Docker engine, adds you to the `docker` group, and enables the service:
+
+```bash
+make deps
+newgrp docker          # or log out/in, so docker works without sudo
+```
+
+Then run the Quickstart.
+
+### 🪟 Windows (WSL2)
+
+Native Windows shells (PowerShell, cmd) are **not** supported. Use **WSL2** with Docker Desktop's WSL backend, every command then runs unchanged inside the WSL shell:
+
+1. Install [WSL2](https://learn.microsoft.com/windows/wsl/install) and a Linux distro (e.g. Ubuntu).
+2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and enable **Settings → Resources → WSL integration** for your distro.
+3. Clone the repo **inside the WSL filesystem** (e.g. `~/forgepath`, not `/mnt/c/...`) for usable file I/O.
+4. From the WSL shell, run `make deps` then the Quickstart.
+
+> On WSL2, `make deps` installs the CLIs via apt but **deliberately skips the Docker engine** — Docker Desktop provides it through the WSL integration (there's no systemd to run a local daemon).
 
 ---
 

@@ -14,9 +14,20 @@ End-to-end install of the ForgePath platform on a fresh machine, plus a first sc
 | GNU make   | 3.81+       | Default on macOS and Linux                                     |
 | openssl    | recent      | Used to generate the Grafana admin password                    |
 
+### Install everything in one shot
+
+```bash
+make doctor   # check what's present and what's missing (installs nothing)
+make deps     # install every missing prerequisite via your package manager
+```
+
+`make deps` auto-detects the platform and package manager — **Homebrew** (macOS), **apt** (Debian/Ubuntu/WSL2), **dnf/yum** (Fedora/RHEL), **pacman** (Arch), **zypper** (openSUSE). Node is installed through [nvm](https://github.com/nvm-sh/nvm); `kind` and `kubectl` are fetched as pinned binaries where no package exists. It's idempotent — tools already at a supported version are skipped — and `make doctor` re-runs at the end so you see the final state.
+
+> If `make deps` just installed Node/Yarn via nvm, open a new shell (or `. "$NVM_DIR/nvm.sh"`) before `make backstage-init` so `node`/`yarn` are on `PATH`.
+
 ### Platform support
 
-Tested on macOS (Apple Silicon + Intel) and Linux. **On Windows, use WSL2 with Docker Desktop's WSL backend**, all scripts run unchanged inside the WSL shell. Native Windows shells (PowerShell, cmd) are not supported.
+Tested on macOS (Apple Silicon + Intel) and Linux. **On Windows, use WSL2 with Docker Desktop's WSL backend** — all scripts (and `make deps`) run unchanged inside the WSL shell. Native Windows shells (PowerShell, cmd) are not supported. On WSL2, `make deps` installs the CLIs via apt but **does not** install the Docker engine: enable Docker Desktop's *Settings → Resources → WSL integration* for your distro instead.
 
 ## 1. Clone and configure
 

@@ -18,7 +18,7 @@ OVERLAY_DIR="${REPO_ROOT}/platform/backstage/overlay"
 CREATE_APP_VERSION="${FORGEPATH_CREATE_APP_VERSION:-0.8.3}"
 
 require() {
-  command -v "$1" >/dev/null || { echo "missing dependency: $1" >&2; exit 1; }
+  command -v "$1" >/dev/null || { echo "missing dependency: $1 (run: make deps)" >&2; exit 1; }
 }
 require node
 require yarn
@@ -27,7 +27,7 @@ require npx
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 if [ "${NODE_MAJOR}" -lt 22 ]; then
   echo "Node 22+ required (got $(node -v))." >&2
-  echo "Try: nvm install 22 && nvm use 22" >&2
+  echo "Try: nvm install 22 && nvm use 22   (or: make deps)" >&2
   exit 1
 fi
 

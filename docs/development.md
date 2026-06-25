@@ -6,6 +6,13 @@ How to work in the repo: make targets, common customizations, fork setup.
 
 `make help` lists everything. The interesting ones:
 
+### Setup
+
+| Target         | What it does                                                                                  |
+|----------------|-----------------------------------------------------------------------------------------------|
+| `make doctor`  | Check every prerequisite (presence + version); exits non-zero if anything is missing          |
+| `make deps`    | Install missing prerequisites via the detected package manager (brew/apt/dnf/pacman/zypper)    |
+
 ### Cluster lifecycle
 
 | Target              | What it does                                            |
