@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-101
+  # namespace omitted on purpose, see deployment.yaml.
+  labels:
+    app: test-service-101
+    backstage.io/kubernetes-id: test-service-101
+spec:
+  type: NodePort
+  selector:
+    app: test-service-101
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080

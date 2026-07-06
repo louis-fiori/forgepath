@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-service-101
+  # namespace omitted on purpose, ArgoCD's destination namespace
+  # (preview-scaffold-<name> from the ApplicationSet template) controls placement.
+  labels:
+    app: test-service-101
+    backstage.io/kubernetes-id: test-service-101
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-service-101
+  template:
+    metadata:
+      labels:
+        app: test-service-101
+        backstage.io/kubernetes-id: test-service-101
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
