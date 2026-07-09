@@ -40,18 +40,20 @@ your changes will be wiped on the next init.
 | `.dockerignore` | Overrides the scaffold's `.dockerignore` to allow `app-config.local.yaml` into the docker image (the scaffold ignores `*.local.yaml` by default). |
 | `app-config.local.yaml` | Additional Backstage config, loaded *after* `app-config.yaml` (via `--config` flags in `gitops/platform/backstage/deployment.yaml`). Overrides locations to point at the injected catalog/templates, configures the Kubernetes plugin against the in-cluster API, disables the broken standalone `/kubernetes` page. |
 | `packages/app/src/App.tsx` | Replaces the scaffolded frontend app, adds the TechDocs plugin to the feature list so the entity docs tab renders. |
-| `packages/backend/src/index.ts` | Full replacement of the scaffolded backend index, registers our four custom scaffolder actions and the `GITHUB_TOKEN` env-var wiring. |
-| `packages/backend/src/modules/scaffolderActionGithubClosePullRequest.ts` | Custom action `github:closePullRequest`. Closes the open PR matching a given head branch. Used by the `destroy-service-from-kind` template to tear down preview environments. Reads `GITHUB_TOKEN` from env. |
+| `packages/backend/src/index.ts` | Full replacement of the scaffolded backend index, registers our five custom scaffolder actions and the `GITHUB_TOKEN` env-var wiring. |
+| `packages/backend/src/modules/scaffolderActionGithubClosePullRequest.ts` | Custom action `github:closePullRequest`. Closes the open PR matching a given head branch, optionally deleting the branch (`deleteBranch: true`). Used by the `destroy-service-from-kind` template to tear down preview environments. Reads `GITHUB_TOKEN` from env. |
 | `packages/backend/src/modules/scaffolderActionGithubAddLabels.ts` | Custom action `github:addLabels`. Post-step companion to `publish:github:pull-request` (which has no labels input). Used to stamp the `preview` label on PRs opened by the deploy template. |
+| `packages/backend/src/modules/scaffolderActionCatalogUnregister.ts` | Custom action `catalog:unregister`. Inverse of `catalog:register`: removes the registered location and every entity it emitted, via the catalog backend's `catalogServiceRef`. Used by the `destroy-service-from-kind` template, without it the Component would linger in the catalog after the preview PR closes (closing a PR never deletes the branch, so the registered URL keeps resolving; and the default `orphanStrategy: keep` retains entities even when it stops). |
 | `packages/backend/src/modules/scaffolderActionIncidentAnalyzerAnalyze.ts` | Custom action `incident-analyzer:analyze`. Calls the incident-analyzer's `/analyze` endpoint and returns the structured diagnosis. Used by the `analyze-incident` template to run an on-demand AI analysis from a Backstage form. Targets the in-cluster service URL by default; override with an `INCIDENT_ANALYZER_URL` env var on the Backstage Deployment. |
 | `packages/backend/src/modules/scaffolderActionIncidentAnalyzerAnalyzeLog.ts` | Custom action `incident-analyzer:analyzeLog`. Calls the incident-analyzer's `/analyze-log` endpoint to analyze a single log line (pasted raw or fetched from Loki by a line-contains filter) and returns the diagnosis. Used by the `analyze-log` template. Same `INCIDENT_ANALYZER_URL` override as above. |
 | `packages/backend/Dockerfile` | Replaces the scaffold's Dockerfile to install `mkdocs` + `mkdocs-techdocs-core` (Python) so the TechDocs backend can build docs in-process with `techdocs.generator.runIn: 'local'`. |
 
 ## What's in `package-additions.json`
 
-One runtime dep required by the custom scaffolder actions:
+Runtime deps required by the custom scaffolder actions:
 
 - `@octokit/rest`, talks to the GitHub API (github:closePullRequest, github:addLabels)
+- `@backstage/plugin-catalog-node`, provides `catalogServiceRef` (catalog:unregister)
 
 Merged (not replaced) into the scaffolded `package.json`, so vendor upgrades
 to other deps survive a re-init.

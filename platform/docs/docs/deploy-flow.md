@@ -47,16 +47,18 @@ The flow is "PR is the lifecycle handle":
 2. Type the service name. Submit.
 3. The `destroy-service-from-kind` template invokes the custom action
    `github:closePullRequest`, which closes the PR with head branch
-   `scaffold-<name>` via the GitHub API.
+   `scaffold-<name>` and deletes the branch via the GitHub API (GitHub
+   only auto-deletes branches on merge, never on close).
 4. The ApplicationSet sees the PR is no longer open → removes the
    Application → the resources finalizer cascade-deletes everything in
    the `preview-scaffold-<name>` namespace.
-5. The Backstage Component lingers in the catalog until the
-   `scaffold-<name>` branch is deleted on GitHub. Once the branch is
-   gone, the registered location 404s on the next catalog refresh and
-   the entity is marked orphan (and dropped). When the prod flow is
-   wired up, a `main`-targeted GitHub discovery provider will take over
-   and persist the Component beyond the PR lifecycle.
+5. The custom action `catalog:unregister` removes the registered
+   location and the Component entity from the catalog. Closing the PR
+   straight from the GitHub UI skips this, the entity lingers until the
+   destroy template is run (it's idempotent, so running it after the
+   fact finishes the cleanup). When the prod flow is wired up, a
+   `main`-targeted GitHub discovery provider will take over and persist
+   the Component beyond the PR lifecycle.
 
 ## Why this is "GitOps-correct"
 

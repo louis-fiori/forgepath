@@ -17,7 +17,7 @@ ForgePath shows how a small platform team can give application developers a clea
 - **Observability by default**, Prometheus scrapes every pod for CPU/memory, Promtail forwards every log line into Loki, three Grafana dashboards (`Cluster pods` + `Service logs` + `Logs · Error explorer`) are auto-provisioned and deep-linked from each service's catalog entry
 - **TechDocs runbooks**, each scaffolded service ships with an editable mkdocs runbook, served straight in Backstage
 - **AI incident detection**, the `incident-analyzer` watches Loki, Prometheus and the K8s API; on an error spike / OOMKill / CrashLoop it asks Claude (via Bedrock or the direct Anthropic API) for a root cause + remediation, then files a GitHub issue and a Backstage notification. Sensitive data is masked before it ever reaches the LLM. Run it on a poll loop or on demand from a Backstage form.
-- **Closing the PR cleans up**, ArgoCD ApplicationSet prunes the namespace, Backstage marks the catalog entity orphan once the branch is gone
+- **Closing the PR cleans up**, ArgoCD ApplicationSet prunes the namespace; the destroy template also deletes the scaffold branch and removes the catalog entity
 
 ---
 

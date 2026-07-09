@@ -29,7 +29,7 @@ const scaffolderModuleGithubClosePullRequest = createBackendModule({
           createTemplateAction({
             id: 'github:closePullRequest',
             description:
-              'Closes the open PR whose head branch matches branchName. Idempotent, logs a warning and exits cleanly if no PR is found.',
+              'Closes the open PR whose head branch matches branchName, optionally deleting the branch. Idempotent, logs a warning and exits cleanly if no PR or branch is found.',
             schema: {
               input: {
                 repoUrl: z =>
@@ -42,10 +42,17 @@ const scaffolderModuleGithubClosePullRequest = createBackendModule({
                   z
                     .string()
                     .describe('Head branch of the PR to close.'),
+                deleteBranch: z =>
+                  z
+                    .boolean()
+                    .optional()
+                    .describe(
+                      'Also delete branchName after closing (GitHub only auto-deletes on merge, never on close).',
+                    ),
               },
             },
             async handler(ctx) {
-              const { repoUrl, branchName } = ctx.input;
+              const { repoUrl, branchName, deleteBranch = false } = ctx.input;
               const { owner, repo } = parseRepoUrl(repoUrl);
 
               const token = process.env.GITHUB_TOKEN;
@@ -69,7 +76,6 @@ const scaffolderModuleGithubClosePullRequest = createBackendModule({
                 ctx.logger.warn(
                   `No open PR found with head branch "${branchName}" on ${owner}/${repo}. Nothing to close.`,
                 );
-                return;
               }
 
               for (const pr of prs) {
@@ -82,6 +88,27 @@ const scaffolderModuleGithubClosePullRequest = createBackendModule({
                   pull_number: pr.number,
                   state: 'closed',
                 });
+              }
+
+              // Runs even when no open PR matched, so a PR closed via the
+              // GitHub UI can still get its branch cleaned up here.
+              if (deleteBranch) {
+                try {
+                  await octokit.git.deleteRef({
+                    owner,
+                    repo,
+                    ref: `heads/${branchName}`,
+                  });
+                  ctx.logger.info(`Deleted branch "${branchName}"`);
+                } catch (e) {
+                  if ((e as { status?: number }).status === 422) {
+                    ctx.logger.warn(
+                      `Branch "${branchName}" does not exist on ${owner}/${repo}. Nothing to delete.`,
+                    );
+                  } else {
+                    throw e;
+                  }
+                }
               }
             },
           }),

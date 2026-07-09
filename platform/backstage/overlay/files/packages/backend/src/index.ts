@@ -22,6 +22,7 @@ backend.add(
 // custom scaffolder actions
 backend.add(import('./modules/scaffolderActionGithubClosePullRequest'));
 backend.add(import('./modules/scaffolderActionGithubAddLabels'));
+backend.add(import('./modules/scaffolderActionCatalogUnregister'));
 backend.add(import('./modules/scaffolderActionIncidentAnalyzerAnalyze'));
 backend.add(import('./modules/scaffolderActionIncidentAnalyzerAnalyzeLog'));
 

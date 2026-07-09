@@ -4,10 +4,11 @@ metadata:
   name: destroy-service-from-kind
   title: Destroy a deployed service
   description: |
-    Closes the preview PR opened by `deploy-service-to-kind` for a given service name. 
-    ArgoCD's ApplicationSet removes the corresponding `preview-scaffold-<name>` Application within ~60s, which cascades-deletes
-    every resource the workload created in the `preview-scaffold-<name>` namespace (Deployment, Service, ConfigMap, etc.).
-    Idempotent, if no matching PR is open (e.g. it was already closed via the GitHub UI), the action logs a warning and exits cleanly.
+    Closes the preview PR opened by `deploy-service-to-kind` for a given service name, deletes its `scaffold-<name>` branch,
+    and unregisters the Component from the Backstage catalog. ArgoCD's ApplicationSet removes the corresponding
+    `preview-scaffold-<name>` Application within ~60s, which cascades-deletes every resource the workload created
+    in the `preview-scaffold-<name>` namespace (Deployment, Service, ConfigMap, etc.).
+    Idempotent, if the PR was already closed via the GitHub UI, running this still cleans up the branch and the catalog entity.
 spec:
   owner: user:guest
   type: service
@@ -26,17 +27,28 @@ spec:
 
   steps:
     - id: close
-      name: Close preview PR
+      name: Close preview PR and delete branch
       action: github:closePullRequest
       input:
         repoUrl: github.com?owner=${FORGEPATH_GITHUB_OWNER}&repo=${FORGEPATH_GITHUB_REPO}
         branchName: scaffold-${{ parameters.name }}
+        deleteBranch: true
+
+    # catalog:register (deploy template) pointed at the PR branch; nothing prunes
+    # the entity when the PR closes, so drop the location and its entities here.
+    - id: unregister
+      name: Remove Component from Backstage catalog
+      action: catalog:unregister
+      input:
+        catalogInfoUrl: https://github.com/${FORGEPATH_GITHUB_OWNER}/${FORGEPATH_GITHUB_REPO}/blob/scaffold-${{ parameters.name }}/gitops/workloads/${{ parameters.name }}/catalog-info.yaml
 
   output:
     text:
-      - title: Preview PR closed
+      - title: Preview destroyed
         content: |
-          The preview PR for `${{ parameters.name }}` has been closed.
+          The preview PR for `${{ parameters.name }}` has been closed, the
+          `scaffold-${{ parameters.name }}` branch deleted, and the Component
+          removed from the Backstage catalog.
 
           ArgoCD will tear down the matching `preview-scaffold-${{ parameters.name }}` Application
           within ~60s (the ApplicationSet poll cycle), which removes the

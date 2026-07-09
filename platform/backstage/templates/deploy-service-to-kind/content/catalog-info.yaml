@@ -52,8 +52,8 @@ metadata:
       icon: web
 {%- endif %}
     # Opens the destroy-service-from-kind scaffolder with the name pre-filled.
-    # Submitting closes the preview PR, which cascades to ArgoCD pruning the
-    # namespace. The entity goes orphan once the `scaffold-<name>` branch is deleted.
+    # Submitting closes the preview PR (ArgoCD prunes the namespace), deletes
+    # the `scaffold-<name>` branch, and removes this entity from the catalog.
     - url: http://localhost:7007/create/templates/default/destroy-service-from-kind?formData=%7B%22name%22%3A%22${{ values.name }}%22%7D
       title: Destroy this service
       icon: scaffolder
