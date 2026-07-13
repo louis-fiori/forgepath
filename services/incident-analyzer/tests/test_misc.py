@@ -6,7 +6,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.loki import _range_seconds
+from app.loki import _range_seconds, valid_window
 
 
 def test_range_seconds_units():
@@ -15,6 +15,21 @@ def test_range_seconds_units():
     assert _range_seconds("2h") == 7200
     assert _range_seconds("1d") == 86400  # was silently falling back to 600
     assert _range_seconds("bogus") == 600  # unparseable → safe default
+
+
+def test_valid_window_accepts_duration_literals_only():
+    for good in ("30s", "10m", "2h", "1d"):
+        assert valid_window(good)
+    # LogQL injection attempts and junk must be rejected before reaching the query.
+    for bad in ("", "10x", "10", "m", "10m ", "1h]) or count_over_time({x=", "9999d\n"):
+        assert not valid_window(bad)
+
+
+def test_analyze_rejects_injected_window(monkeypatch):
+    with _client(monkeypatch) as client:
+        r = client.get("/analyze", params={"namespace": "default", "window": '1h])) or sum(count_over_time({namespace="kube-system"}[1h'})
+    assert r.status_code == 400
+    assert "window" in r.json()["detail"]
 
 
 def _client(monkeypatch) -> TestClient:

@@ -4,6 +4,7 @@ plain GET requests against the query / query_range API."""
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections import defaultdict
 
@@ -16,6 +17,14 @@ from .models import LogSample
 # so the two can't drift.
 _SEVERITY = "error|fatal"
 
+# LogQL duration literal (e.g. 5m, 1h). `window` is interpolated raw into the
+# error_count range selector, so it must match this before reaching the query.
+_WINDOW_RE = re.compile(r"\d+[smhd]")
+
+
+def valid_window(window: str) -> bool:
+    return bool(window and _WINDOW_RE.fullmatch(window))
+
 
 def _range_seconds(window: str) -> int:
     units = {"s": 1, "m": 60, "h": 3600, "d": 86400}
@@ -27,6 +36,10 @@ def _range_seconds(window: str) -> int:
 
 async def error_count(client: httpx.AsyncClient, namespace: str, window: str) -> int:
     """Total error/fatal lines in the window (instant query over count_over_time)."""
+    # Backstop against LogQL injection: `window` lands inside the range selector
+    # unescaped. The API layer validates it too; this guards any other caller.
+    if not valid_window(window):
+        raise ValueError(f"invalid LogQL window: {window!r}")
     q = (
         f'sum(count_over_time({{namespace="{namespace}"}} '
         f'| json | severity=~"{_SEVERITY}" [{window}]))'

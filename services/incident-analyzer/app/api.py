@@ -8,7 +8,7 @@ import re
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
-from . import metrics
+from . import loki, metrics
 from .config import settings
 from .models import AnalyzeResult
 from .poller import run_cycle, run_single_log
@@ -48,6 +48,18 @@ def _validated_namespace(ns: str) -> str:
             detail=r"invalid namespace (must be a DNS-1123 label: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$)",
         )
     return ns
+
+
+def _validated_window(window: str | None) -> str | None:
+    """`window` is interpolated into a LogQL range selector (loki.error_count),
+    so reject anything that isn't a bare duration literal before it gets there.
+    Empty/None passes through: the poller then applies settings.detect_window."""
+    if window and not loki.valid_window(window):
+        raise HTTPException(
+            status_code=400,
+            detail=r"invalid window (must be a LogQL duration like 5m, 1h, 30s, 2d: ^\d+[smhd]$)",
+        )
+    return window
 
 
 @router.get("/healthz")
@@ -137,7 +149,7 @@ async def analyze_get(
     open_issue: bool | None = None,
 ) -> AnalyzeResult:
     ns = _validated_namespace(namespace or (settings.namespaces[0] if settings.namespaces else "default"))
-    return await _analyze(request, ns, window, force, open_issue)
+    return await _analyze(request, ns, _validated_window(window), force, open_issue)
 
 
 def _as_bool(v) -> bool:
@@ -172,7 +184,7 @@ async def analyze_post(request: Request) -> AnalyzeResult:
     return await _analyze(
         request,
         ns,
-        pick("window"),
+        _validated_window(pick("window")),
         _as_bool(force_raw) if force_raw is not None else False,
         None if open_issue_raw is None else _as_bool(open_issue_raw),
     )
@@ -195,7 +207,7 @@ async def analyze_log_post(request: Request) -> AnalyzeResult:
         namespace=ns,
         log_line=log_line,
         query=query,
-        window=pick("window"),
+        window=_validated_window(pick("window")),
         component=pick("component") or None,
         open_issue=None if open_issue_raw is None else _as_bool(open_issue_raw),
         default_issues_enabled=request.app.state.issues_enabled,
