@@ -3,21 +3,30 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: forgepath
 nodes:
   - role: control-plane
+    # Bind every host port to loopback only. kind defaults an omitted listenAddress
+    # to 0.0.0.0, which would publish guest-auth Backstage, insecure ArgoCD, Grafana
+    # and the generator's abuse endpoints to the whole LAN. ForgePath is localhost-only
+    # (see SECURITY.md); 127.0.0.1 keeps it that way.
     extraPortMappings:
       - containerPort: 30007
         hostPort: 7007
+        listenAddress: "127.0.0.1"
         protocol: TCP
       - containerPort: 30030
         hostPort: 3000
+        listenAddress: "127.0.0.1"
         protocol: TCP
       - containerPort: 30808
         hostPort: 8080
+        listenAddress: "127.0.0.1"
         protocol: TCP
       # Generic "demo service" slot, bound to whichever workload sets spec.type=NodePort, nodePort=30080 in deploy-service-to-kind.
       - containerPort: 30080
         hostPort: 8888
+        listenAddress: "127.0.0.1"
         protocol: TCP
       # incident-generator's on-demand failure endpoints (NodePort 30081). Reachable at http://localhost:8889, see scripts/trigger-incident.sh.
       - containerPort: 30081
         hostPort: 8889
+        listenAddress: "127.0.0.1"
         protocol: TCP

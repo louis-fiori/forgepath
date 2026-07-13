@@ -30,6 +30,12 @@ spec:
           title: Container image
           type: string
           default: nginx:1.27-alpine
+          # Rendered verbatim into the Deployment's `image:` field, so restrict it to
+          # image-reference characters. Blocks whitespace/newlines and YAML metacharacters
+          # that could otherwise inject structure (e.g. hostNetwork) into the manifest.
+          pattern: '^[a-zA-Z0-9][a-zA-Z0-9._/:@-]*$'
+          maxLength: 200
+          description: Image reference, e.g. `nginx:1.27-alpine` or `repo@sha256:...` (no whitespace).
         replicas:
           title: Replicas
           type: integer

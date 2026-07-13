@@ -9,15 +9,14 @@ kind: ClusterRole
 metadata:
   name: incident-analyzer-reader
 rules:
+  # The analyzer's k8s collector only reads pods + events (CoreV1); it never
+  # touches deployments/replicasets, so the apps group is intentionally omitted.
+  # ClusterRole (not per-namespace Role) is deliberate: the analyzer watches
+  # dynamically-created preview-scaffold-* namespaces it can't enumerate up front.
   - apiGroups: [""]
     resources:
       - pods
       - events
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["apps"]
-    resources:
-      - deployments
-      - replicasets
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
