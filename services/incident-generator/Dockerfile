@@ -3,7 +3,7 @@
 # by multi-arch index digest (reproducible on amd64 CI + arm64 dev).
 # Bump: docker buildx imagetools inspect <image>
 
-FROM golang:1.25-alpine@sha256:523c3effe300580ed375e43f43b1c9b091b68e935a7c3a92bfcc4e7ed55b18c2 AS build
+FROM golang:1.25-alpine@sha256:56961d79ea8129efddcc0b8643fd8a5416b4e6228cfd477e3fd61deb2672c587 AS build
 WORKDIR /src
 
 # No third-party deps (stdlib only), so there's nothing to `go mod download`.
