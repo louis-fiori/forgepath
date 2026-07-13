@@ -2,3 +2,7 @@
 !app
 !requirements.txt
 !requirements.lock
+# `!app` re-includes everything under app/, including local __pycache__; keep
+# stale bytecode out of the build context (also untracked in git).
+app/**/__pycache__
+app/**/*.pyc
