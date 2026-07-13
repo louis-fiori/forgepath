@@ -9,13 +9,14 @@ state fully described in Git and reconciled by ArgoCD.
 
 ## Components
 
-- **Backstage**, the front door. Service catalog, scaffolder templates for
-  deploy/destroy, embedded Kubernetes view, this documentation site.
+- **Backstage**, the front door. Service catalog, scaffolder templates
+  (deploy, destroy, and two AI-analysis forms: analyze-incident /
+  analyze-log), embedded Kubernetes view, this documentation site.
 - **ArgoCD**, the GitOps engine. Watches `gitops/` on GitHub, syncs the
   platform manifests and every preview environment.
 - **Prometheus + Grafana + Loki**, always-on observability. Prometheus
   scrapes every pod metric for free; Promtail forwards every pod's logs
-  into Loki; the `Cluster pods`, `Service logs` and `Logs · Error explorer`
+  into Loki; the `Cluster pods overview`, `Service logs` and `Logs · Error explorer`
   dashboards are provisioned by default.
 - **incident-generator**, a Go chaos fixture that emits errors / OOMKills /
   panics on a loop and on demand, so there's always something to detect.

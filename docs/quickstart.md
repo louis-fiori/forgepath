@@ -10,7 +10,7 @@ End-to-end install of the ForgePath platform on a fresh machine, plus a first sc
 | kind       | 0.20+       | https://kind.sigs.k8s.io/                                      |
 | kubectl    | 1.28+       | https://kubernetes.io/docs/tasks/tools/                        |
 | Node       | 22+         | Recommended via [nvm](https://github.com/nvm-sh/nvm)           |
-| Yarn       | 1.x classic | Bundled with Backstage scaffolder                              |
+| Yarn       | 1.x+ shim   | `make deps` enables Yarn 4 via corepack; the scaffold pins it   |
 | GNU make   | 3.81+       | Default on macOS and Linux                                     |
 | openssl    | recent      | Used to generate the Grafana admin password                    |
 
@@ -84,7 +84,7 @@ It takes ~3 min for everything to settle. Watch the live state at <http://localh
 | Preview demo slot | http://localhost:8888     | n/a (any preview with `exposeOnLocalhost: true`) |
 | incident-generator | http://localhost:8889    | n/a (`make incident TYPE=panic` to trigger an incident) |
 
-The Grafana home includes the auto-provisioned dashboards: `Cluster pods`, `Service logs`, and `Logs · Error explorer`.
+The Grafana home includes the auto-provisioned dashboards: `Cluster pods overview`, `Service logs`, and `Logs · Error explorer`.
 
 ## 5. Deploy your first service
 
@@ -119,6 +119,8 @@ Then see the AI Incident Analyzer pick it up:
 1. Open <http://localhost:7007/create> → **Analyze an incident (AI Incident Analyzer)**
 2. Leave the namespace as `incident-generator`, pick a lookback window, and submit
 3. The diagnosis (root cause + remediation, severity, confidence) renders back in the task page; if issue creation is enabled it links to the GitHub issue it filed
+
+To diagnose one line instead of a whole namespace, use **Analyze a single log line (AI Incident Analyzer)**: paste a raw log line, or give a substring and the newest matching Loki line is fetched and analyzed.
 
 This requires LLM creds (see the note in step 3). You can also drive it directly: `kubectl -n incident-analyzer port-forward svc/incident-analyzer 8081:80` (8080 is already taken by the ArgoCD UI), then (the `/analyze*` endpoints require the shared S2S token) `TOKEN=$(kubectl -n backstage get secret backstage-s2s-token -o jsonpath='{.data.token}' | base64 -d)` and `curl -H "Authorization: Bearer $TOKEN" "localhost:8081/analyze?namespace=incident-generator&force=true"`.
 

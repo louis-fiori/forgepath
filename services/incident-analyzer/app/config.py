@@ -48,6 +48,9 @@ class Settings(BaseSettings):
 
     # Direct Anthropic API path.
     anthropic_api_key: str = ""
+    # Deliberately pinned to Sonnet 4.6 (still active): analyze() forces tool_choice,
+    # which on newer models via Bedrock needs thinking:{type:"disabled"} (and adaptive
+    # thinking would eat into max_tokens). Bump to claude-sonnet-5 only alongside that.
     analyzer_model: str = "claude-sonnet-4-6"
 
     # Amazon Bedrock path. Model IDs carry the `anthropic.` prefix, often a region-scoped

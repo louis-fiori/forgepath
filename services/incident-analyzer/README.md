@@ -30,11 +30,12 @@ poll loop (every POLL_INTERVAL) ─┐         on-demand: GET/POST /analyze
 a pod `OOMKilled` / `CrashLoopBackOff`, **or** a recovered-panic spike
 (increase ≥ `PANIC_THRESHOLD`).
 
-**Masking** (`MASKING_ENABLED`, on by default) redacts emails, phone numbers,
-card numbers, IBANs, auth tokens, IPv4/IPv6 addresses and secret key/value pairs
-(incl. JSON-quoted) from the log samples and pod
-events *before* they reach Claude, so the cardholder data the
-`incident-generator` deliberately leaks stays inside the trust boundary.
+**Masking** (`MASKING_ENABLED`, on by default) redacts PEM private-key blocks,
+JWTs, AWS access-key IDs, bearer/basic tokens, emails, phone numbers, card
+numbers (Luhn-checked), IBANs, IPv4/IPv6 addresses and secret key/value pairs
+(incl. JSON-quoted) from the log samples and pod events *before* they reach
+Claude, so the cardholder data the `incident-generator` deliberately leaks stays
+inside the trust boundary.
 
 **Runbook context**, the analyzer fetches the service's TechDocs runbook (from
 `raw.githubusercontent.com` on `GITHUB_BRANCH`) and feeds it to Claude, so the
@@ -74,12 +75,14 @@ the Deployment reads as optional env vars; `make incident-analyzer-secrets`
 re-syncs after a `.env` edit. The in-cluster endpoints and `/aws` file paths are
 set in `gitops/platform/incident-analyzer/deployment.yaml`. The advanced
 thresholds (`DETECT_WINDOW`, `PANIC_THRESHOLD`, `REFILE_COOLDOWN_SECONDS`,
-`MAX_TOKENS`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES`) are **not** wired by
-default, their values come from `app/config.py`; to change one, add it as an
-env var on the Deployment (the config reads it straight from the environment).
+`MAX_TOKENS`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES`, `PORT`, `GRAFANA_URL`)
+are **not** wired by default, their values come from `app/config.py`; to change
+one, add it as an env var on the Deployment (the config reads it straight from
+the environment).
 
 | Var | Default | Meaning |
 | --- | --- | --- |
+| `PORT` | `8080` | Port the FastAPI server binds |
 | `WATCH_NAMESPACES` | `incident-generator` | Comma-separated namespaces to poll |
 | `POLL_ENABLED` | `true` | Background auto-detection. `false` → manual-only (analyze on demand; no background Claude calls / tokens) |
 | `POLL_INTERVAL_SECONDS` | `60` | Background loop cadence (when `POLL_ENABLED=true`) |
@@ -87,7 +90,7 @@ env var on the Deployment (the config reads it straight from the environment).
 | `ERROR_THRESHOLD` | `20` | Error lines in window → incident |
 | `PANIC_THRESHOLD` | `1` | Increase in recovered panics → incident |
 | `REFILE_COOLDOWN_SECONDS` | `21600` | Don't re-file the same fingerprint within 6h |
-| `MASKING_ENABLED` | `true` | Redact emails, phone numbers, card numbers, IBANs, tokens, IPv4/IPv6 addresses and secret key/value pairs (incl. JSON-quoted) from samples/events before the LLM call |
+| `MASKING_ENABLED` | `true` | Redact PEM private keys, JWTs, AWS access-key IDs, bearer/basic tokens, emails, phone numbers, card numbers (Luhn), IBANs, IPv4/IPv6 addresses and secret key/value pairs (incl. JSON-quoted) from samples/events before the LLM call |
 | `LLM_PROVIDER` | `bedrock` | `bedrock` (AWS SigV4) or `anthropic` (direct API key) |
 | `MAX_TOKENS` | `2048` | Diagnosis output cap |
 | `LLM_TIMEOUT_SECONDS` | `45` | Per-call ceiling on the LLM request. Kept under `POLL_INTERVAL_SECONDS` so a slow call can't outlast a poll cycle |
@@ -103,6 +106,7 @@ env var on the Deployment (the config reads it straight from the environment).
 | `GITHUB_TOKEN` |, | Secret. Needs **Issues: write** to file issues |
 | `GITHUB_OWNER` / `GITHUB_REPO` | `louis-fiori` / `forgepath` | Repo to file issues against |
 | `GITHUB_BRANCH` | `dev` | Branch to read TechDocs runbooks from (raw.githubusercontent) |
+| `GRAFANA_URL` | `http://localhost:3000` | Browser-facing Grafana base for the dashboard deep-links rendered into issues/notifications (not the in-cluster service URL) |
 | `BACKSTAGE_S2S_TOKEN` |, | Secret. Shared service-to-service token: sent outbound to authenticate Backstage notifications, and required inbound on `/analyze`, `/analyze-log`, `/settings`. Unset → notifications skipped **and** those endpoints left open |
 | `LOKI_URL` / `PROMETHEUS_URL` / `BACKSTAGE_URL` | in-cluster DNS | Backend endpoints |
 

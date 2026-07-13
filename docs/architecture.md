@@ -124,7 +124,7 @@ The `previews` ApplicationSet enforces `CreateNamespace=true` so manifests must 
 
 - **Metrics**: Prometheus uses two scrape jobs, one against `kubernetes.default.svc/api/v1/nodes/<node>/proxy/metrics/cadvisor` for container CPU/memory (every pod, no wiring), and a pod-discovery job that picks up any pod annotated with `prometheus.io/scrape: "true"` (opt-in for app-side `/metrics`).
 - **Logs**: Promtail runs as a DaemonSet, tails `/var/log/pods/` on each node, enriches each line with `namespace` / `pod` / `container` labels, and pushes to Loki's HTTP endpoint. Loki stores chunks on a filesystem backend with 72h retention.
-- **Visualization**: Grafana ships with three auto-provisioned dashboards (`Cluster pods` from Prometheus, `Service logs` and `Logs · Error explorer` from Loki). Each scaffolded service's catalog entry includes deep links into these dashboards with the namespace variable pre-filled.
+- **Visualization**: Grafana ships with three auto-provisioned dashboards (`Cluster pods overview` from Prometheus, `Service logs` and `Logs · Error explorer` from Loki). Each scaffolded service's catalog entry includes deep links into these dashboards with the namespace variable pre-filled.
 
 ## AI incident detection
 

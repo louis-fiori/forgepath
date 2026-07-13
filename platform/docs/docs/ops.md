@@ -2,7 +2,9 @@
 
 ## Bootstrap from scratch
 
-Pre-requirements: Docker, kind, kubectl, Node 22 (via nvm), Yarn, GNU make.
+Pre-requirements: Docker, kind, kubectl, Node 22 (via nvm), Yarn, GNU make, openssl.
+Run `make doctor` to see what's missing and `make deps` to install the gaps via your
+package manager (Homebrew / apt / dnf / pacman / zypper).
 
 Tested on macOS (Apple Silicon + Intel) and Linux. On Windows, use WSL2 (Ubuntu)
 with Docker Desktop's WSL backend, every script runs unchanged inside the

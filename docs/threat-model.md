@@ -42,11 +42,12 @@ of one shared token; a NetworkPolicy so only Backstage can reach the analyzer.
 
 ### T2, Malicious "preview" PR deploys arbitrary manifests  *(biggest structural risk)*
 **What:** the `previews` ApplicationSet watches PRs labelled `preview` and tells
-ArgoCD to `recurse` and apply **every manifest under `gitops/workloads/**`** in
-that PR, into a `preview-<branch>` namespace (`CreateNamespace=true`,
-`selfHeal`). The scaffolder template constrains what *it* generates, but ArgoCD
-applies whatever YAML is in the PR, not just template output. A malicious PR
-could ship a privileged pod, a `hostPath` mount, a `hostNetwork` pod, etc.
+ArgoCD to apply the YAML matching its `directory.include` filter (`*/k8s/*.yaml`
+under `gitops/workloads/`) from that PR, into a `preview-<branch>` namespace
+(`CreateNamespace=true`, `selfHeal`). The scaffolder template constrains what *it*
+generates, but ArgoCD applies whatever matching YAML is in the PR, not just template
+output. A malicious PR could ship a privileged pod, a `hostPath` mount, a
+`hostNetwork` pod, etc. under a `k8s/` directory.
 **Today:** the only guardrail is **trust in who can apply the `preview` label**
 (and who can open PRs). Pod- and container-level `securityContext` are set on the
 platform's *own* deployments, but **nothing enforces** them on preview workloads.
@@ -71,10 +72,10 @@ image signing + provenance verification (cosign / sigstore); a private registry.
 ### T4, A log line carries a secret the masking misses
 **What:** the analyzer ships log samples and pod events to the LLM. If a service
 logs a secret in a shape the masker doesn't recognise, it leaves the cluster.
-**Today:** `redact()` masks a broad, conservative set (emails, phones, cards with
-a Luhn check, IBANs, JWT / bearer / AWS keys, IPv4/IPv6, `key=value` secrets incl.
-JSON-quoted), applied to both the LLM context and the candidate returned by the
-API. It is **best-effort and pattern-based**.
+**Today:** `redact()` masks a broad, conservative set (PEM private keys, emails,
+phones, cards with a Luhn check, IBANs, JWT / bearer / AWS keys, IPv4/IPv6,
+`key=value` secrets incl. JSON-quoted), applied to both the LLM context and the
+candidate returned by the API. It is **best-effort and pattern-based**.
 **Residual risk:** anything outside the known patterns (a bespoke token format, a
 secret split across fields) can still reach the model.
 **Hardening:** treat masking as defence-in-depth, not a guarantee; add a stricter

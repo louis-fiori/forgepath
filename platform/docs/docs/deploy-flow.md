@@ -18,9 +18,10 @@ The flow is "PR is the lifecycle handle":
           (kept under `k8s/` so ArgoCD can include them exclusively)
         - `catalog-info.yaml`, the Backstage Component definition
         - `mkdocs.yml` + `docs/index.md`, the TechDocs runbook source
-    2. `publish:github:pull-request` opens a PR on `louis-fiori/forgepath`
-       targeting `dev`, on branch `scaffold-<name>`, with the rendered
-       files committed under `gitops/workloads/<name>/`.
+    2. `publish:github:pull-request` opens a PR on your configured repo
+       (`FORGEPATH_GITHUB_OWNER/FORGEPATH_GITHUB_REPO`) targeting your
+       `FORGEPATH_TARGET_BRANCH`, on branch `scaffold-<name>`, with the
+       rendered files committed under `gitops/workloads/<name>/`.
     3. `github:addLabels` (custom action) stamps the `preview` label.
     4. `catalog:register` registers the Component in Backstage using
        the catalog-info.yaml URL on the PR branch. The Component is

@@ -68,9 +68,10 @@ The incident-analyzer sends incident context to Claude (via AWS Bedrock or the
 direct Anthropic API). Before anything leaves the cluster:
 
 - **Masking** (`MASKING_ENABLED=true`, on by default) redacts well-known
-  sensitive shapes from log samples and pod events: emails, phone numbers,
-  payment card numbers (Luhn-checked), IBANs, JWTs / bearer tokens / AWS keys,
-  IPv4/IPv6 addresses, and `key=value` secret pairs (including JSON-quoted). It
+  sensitive shapes from log samples and pod events: PEM private keys, emails,
+  phone numbers, payment card numbers (Luhn-checked), IBANs, JWTs / bearer tokens
+  / AWS keys, IPv4/IPv6 addresses, and `key=value` secret pairs (including
+  JSON-quoted). It
   applies to both the LLM context **and** the candidate returned by the API. It
   is **best-effort and pattern-based**, it reduces exposure, it does not
   guarantee zero leakage; anything outside the known patterns can still reach

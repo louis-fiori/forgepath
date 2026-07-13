@@ -16,8 +16,11 @@ forgepath/
 │   ├── platform/            # Platform manifests (prom/loki/grafana/backstage/incident-*)
 │   └── workloads/           # Preview workloads (populated by PRs)
 │
-├── local/                   # Generated, gitignored
-│   └── backstage/           # Scaffolded Backstage app
+├── services/                # Platform service source (incident-analyzer, incident-generator)
+├── docs/                    # Repo docs (architecture, quickstart, threat model…)
+│
+├── local/                   # kind-config.yaml (committed) + backstage/ (scaffolded, gitignored)
+│   └── backstage/           # Scaffolded Backstage app (gitignored)
 │
 └── scripts/                 # Bootstrap and sync helpers
 ```
@@ -27,8 +30,8 @@ forgepath/
 ```
                  ┌──────────┐         ┌──────────────┐
                  │ Developer│         │  GitHub      │
-                 └────┬─────┘         │  louis-fiori │
-                      │ submits       │  /forgepath  │
+                 └────┬─────┘         │  your fork   │
+                      │ submits       │  (owner/repo)│
                       │ template      └──────┬───────┘
                       ▼                      ▲
                  ┌──────────┐ opens PR       │

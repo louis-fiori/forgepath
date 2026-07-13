@@ -14,9 +14,9 @@ ForgePath shows how a small platform team can give application developers a clea
 
 - **Self-service deploys**, fill a Backstage form, get a PR with rendered K8s manifests
 - **Auto preview environments**, labeled PRs are deployed into `preview-scaffold-<name>` namespaces by ArgoCD
-- **Observability by default**, Prometheus scrapes every pod for CPU/memory, Promtail forwards every log line into Loki, three Grafana dashboards (`Cluster pods` + `Service logs` + `Logs · Error explorer`) are auto-provisioned and deep-linked from each service's catalog entry
+- **Observability by default**, Prometheus scrapes every pod for CPU/memory, Promtail forwards every log line into Loki, three Grafana dashboards (`Cluster pods overview` + `Service logs` + `Logs · Error explorer`) are auto-provisioned and deep-linked from each service's catalog entry
 - **TechDocs runbooks**, each scaffolded service ships with an editable mkdocs runbook, served straight in Backstage
-- **AI incident detection**, the `incident-analyzer` watches Loki, Prometheus and the K8s API; on an error spike / OOMKill / CrashLoop it asks Claude (via Bedrock or the direct Anthropic API) for a root cause + remediation, then files a GitHub issue and a Backstage notification. Sensitive data is masked before it ever reaches the LLM. Run it on a poll loop or on demand from a Backstage form.
+- **AI incident detection**, the `incident-analyzer` watches Loki, Prometheus and the K8s API; on an error spike / OOMKill / CrashLoop it asks Claude (via Bedrock or the direct Anthropic API) for a root cause + remediation, then files a GitHub issue and a Backstage notification. Sensitive data is masked before it ever reaches the LLM. Run it on a poll loop or on demand from Backstage — two scaffolder forms: "Analyze an incident" (a whole namespace) and "Analyze a single log line".
 - **Closing the PR cleans up**, ArgoCD ApplicationSet prunes the namespace; the destroy template also deletes the scaffold branch and removes the catalog entity
 
 ---
@@ -72,7 +72,7 @@ make doctor   # report what's installed / missing / outdated (changes nothing)
 make deps     # install the gaps via the detected package manager (idempotent)
 ```
 
-`make deps` auto-detects your package manager (**Homebrew**, **apt**, **dnf/yum**, **pacman**, **zypper**), installs Node through [nvm](https://github.com/nvm-sh/nvm), and fetches `kind`/`kubectl` as pinned binaries where no package exists. Then pick your OS below and run the [Quickstart](#-quickstart) commands.
+`make deps` auto-detects your package manager (**Homebrew**, **apt**, **dnf/yum**, **pacman**, **zypper**), installs Node through [nvm](https://github.com/nvm-sh/nvm), and fetches `kind`/`kubectl` as pinned binaries where no package exists. The pins are overridable via `KIND_VERSION`, `KUBECTL_VERSION` and `NVM_VERSION` env vars. Then pick your OS below and run the [Quickstart](#-quickstart) commands.
 
 ### 🍎 macOS (Apple Silicon + Intel)
 
@@ -147,7 +147,7 @@ It is a practical starter kit meant to be read, tested, adapted, and extended.
 | **Analyzer state** | In-memory dedup cache, lost on restart, so an incident can re-file after a redeploy | Durable dedup (DB/CRD), correlation across incidents, alert suppression windows |
 | **Networking** | No NetworkPolicies, no ingress controller, NodePort + host port-maps | Ingress/Gateway, NetworkPolicies, mTLS / service mesh as needed |
 | **Tenancy** | Single trust domain, no resource quotas on preview namespaces | Namespace quotas/limits, multi-tenancy isolation, cost controls |
-| **Supply chain** | CI lints + tests the services, validates manifests, and Trivy-scans both service images for CRITICAL/HIGH CVEs; no SBOM or signing | SBOMs, signed releases, provenance, policy gates |
+| **Supply chain** | CI runs gofmt/vet/golangci-lint/`go test -race` (Go) and ruff/pytest on hash-pinned deps (Python), shellchecks the scripts, kustomize-builds every manifest, Trivy-scans both images for CRITICAL/HIGH CVEs (blocking), and Trivy IaC-misconfig + secret scans (SARIF → Security tab). Backstage has its own typecheck/lint/test workflow. No SBOM or signing | SBOMs, signed releases, provenance, policy gates |
 
 See [docs/architecture.md](docs/architecture.md) for the intentional boundaries behind these choices, [SECURITY.md](SECURITY.md) for the security policy (secrets, LLM data, reporting, pre-exposure checklist), and [docs/threat-model.md](docs/threat-model.md) for the threat-by-threat breakdown.
 
